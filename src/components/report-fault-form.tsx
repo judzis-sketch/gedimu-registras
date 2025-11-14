@@ -27,10 +27,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useForbiddenWords } from "@/context/forbidden-words-context";
 import { FaultType } from "@/lib/types";
 import { faultTypeTranslations } from "@/lib/utils";
-import { useFirestore } from "@/firebase";
-import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { useFaults } from "@/context/faults-context";
 
 
 export function ReportFaultForm() {
@@ -38,7 +35,7 @@ export function ReportFaultForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { forbiddenWords } = useForbiddenWords();
-  const firestore = useFirestore();
+  const { addFault } = useFaults();
 
   const formSchema = useMemo(() => z.object({
     reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
@@ -73,43 +70,10 @@ export function ReportFaultForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    if (!firestore) {
-        toast({
-            variant: "destructive",
-            title: "Klaida",
-            description: "Duomenų bazės paslauga nepasiekiama.",
-        });
-        setIsSubmitting(false);
-        return;
-    }
     
     try {
-        const faultsCollection = collection(firestore, 'issues');
-        const faultsSnapshot = await getDocs(faultsCollection);
-        const faultsCount = faultsSnapshot.size;
-
-        const newCustomId = `FAULT-${String(faultsCount + 1).padStart(4, '0')}`;
-        
         const fullPhoneNumber = `+370${values.reporterPhone}`;
-        const newFaultDocument = {
-          ...values,
-          reporterPhone: fullPhoneNumber,
-          customId: newCustomId,
-          assignedTo: '',
-          status: 'new' as const,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-
-        addDoc(faultsCollection, newFaultDocument).catch(error => {
-           const permissionError = new FirestorePermissionError({
-              path: 'issues',
-              operation: 'create',
-              requestResourceData: newFaultDocument,
-            });
-            console.error("Error adding fault to Firestore:", permissionError);
-            errorEmitter.emit('permission-error', permissionError);
-        });
+        await addFault({ ...values, reporterPhone: fullPhoneNumber });
         
         setIsSubmitting(false);
         setIsSuccess(true);
@@ -123,12 +87,12 @@ export function ReportFaultForm() {
         form.reset();
         
         setTimeout(() => setIsSuccess(false), 3000);
-    } catch(error) {
-       console.error("Error getting faults count:", error);
+    } catch(error: any) {
+       console.error("Error submitting fault:", error);
       toast({
           variant: "destructive",
           title: "Klaida",
-          description: "Nepavyko gauti gedimų skaičiaus. Bandykite dar kartą vėliau.",
+          description: error.message || "Nepavyko užregistruoti gedimo. Bandykite dar kartą vėliau.",
       });
       setIsSubmitting(false);
     }

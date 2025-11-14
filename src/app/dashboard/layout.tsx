@@ -21,16 +21,13 @@ import { LayoutDashboard, User, Wrench, LogOut, Users, Ban, Loader2 } from "luci
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { useWorkers } from "@/context/workers-context";
-import { useFaults } from "@/context/faults-context";
+import { WorkersProvider, useWorkers } from "@/context/workers-context";
+import { FaultsProvider, useFaults } from "@/context/faults-context";
 import { Badge } from "@/components/ui/badge";
 import { useAuth, useUser, useMessaging } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { getToken } from "firebase/messaging";
-import { WorkersProvider } from "@/context/workers-context";
-import { FaultsProvider } from "@/context/faults-context";
-
 
 function DashboardLayoutContent({
   children,
@@ -52,7 +49,6 @@ function DashboardLayoutContent({
   const requestNotificationPermission = useCallback(async () => {
     if (typeof window === 'undefined' || !messaging) return;
     
-    // The 'messaging' is a Promise, so we need to await it.
     const messagingInstance = await messaging;
     if (!messagingInstance || !user) return;
     
@@ -63,7 +59,6 @@ function DashboardLayoutContent({
       if (permission === 'granted') {
         console.log('Notification permission granted.');
         
-        // IMPORTANT: Replace 'YOUR_VAPID_KEY' with your actual VAPID key from Firebase console > Project Settings > Cloud Messaging > Web Push certificates
         const currentToken = await getToken(messagingInstance, { vapidKey: 'BG0v7Kz9F3nOtBvS83iA9QvjA5rV_wK-8J4G7dJ3a8v6H3p1Q9Q_cZ-y8C8dGz5k5F3eY2w1zXz9I4k' }); 
         
         if (currentToken) {

@@ -1,4 +1,3 @@
-
 import {
   Card,
   CardContent,
@@ -7,8 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Header } from "@/components/header";
-import { ReportFaultForm } from "@/components/report-fault-form";
 import { CheckCircle, Send, Wrench } from "lucide-react";
+import { ReportFaultWrapper } from "@/components/report-fault-wrapper";
 
 export default function Home() {
   return (
@@ -86,7 +85,7 @@ export default function Home() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ReportFaultForm />
+                    <ReportFaultWrapper />
                   </CardContent>
                 </Card>
               </div>
