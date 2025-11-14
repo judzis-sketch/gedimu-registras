@@ -148,6 +148,23 @@ export function DashboardClient({
         </CardContent>
       </Card>
   );
+  
+  const statusChangeSubMenu = (fault: Fault) => (
+     <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Clock className="mr-2 h-4 w-4" />
+        <span>Keisti būseną</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+          <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
+              Vykdomas
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
+              Užbaigtas
+          </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
 
   function renderTable() {
     return (
@@ -208,36 +225,24 @@ export function DashboardClient({
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {view === "admin" && (
+                        <>
                           <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Priskirti specialistą</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                              {initialWorkers.map(worker => (
-                                  <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
-                                      {worker.name}
-                                  </DropdownMenuItem>
-                              ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <User className="mr-2 h-4 w-4" />
+                              <span>Priskirti specialistą</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                                {initialWorkers.map(worker => (
+                                    <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
+                                        {worker.name}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                          {fault.status !== 'completed' && fault.status !== 'new' && statusChangeSubMenu(fault)}
+                        </>
                       )}
-                        {view === "worker" && fault.status !== 'completed' && (
-                          <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            <Clock className="mr-2 h-4 w-4" />
-                            <span>Keisti būseną</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
-                                  Vykdomas
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(fault.id, "completed")}>
-                                  Užbaigtas
-                              </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      )}
+                        {view === "worker" && fault.status !== 'completed' && statusChangeSubMenu(fault)}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
