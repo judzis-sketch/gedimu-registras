@@ -1,4 +1,4 @@
-import Image from "next/image";
+
 import {
   Card,
   CardContent,
@@ -8,36 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import { ReportFaultForm } from "@/components/report-fault-form";
-import placeholderData from "@/lib/placeholder-images.json";
 import { CheckCircle, Send, Wrench } from "lucide-react";
 
 export default function Home() {
-  const heroImage = placeholderData.placeholderImages[0];
-
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        <section className="relative w-full h-[400px] md:h-[500px] text-white">
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            data-ai-hint={heroImage.imageHint}
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="relative z-10 flex flex-col items-center justify-center h-full text-center space-y-4 bg-black/50 p-4">
-            <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight">
-              Profesionali daugiabučių namų priežiūra
-            </h1>
-            <p className="max-w-2xl text-lg md:text-xl text-primary-foreground/90">
-              Patogus būdas gyventojams pranešti apie problemas, o namo
-              administratoriui – efektyviai jas spręsti.
-            </p>
-          </div>
-        </section>
-
         <section id="report" className="w-full py-12 md:py-20 lg:py-24">
           <div className="container px-4 md:px-6">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
