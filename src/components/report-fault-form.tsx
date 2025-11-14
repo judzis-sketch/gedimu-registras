@@ -72,7 +72,7 @@ export function ReportFaultForm() {
     setIsSubmitting(true);
     
     const fullPhoneNumber = `+370${values.reporterPhone}`;
-    addFault({ ...values, reporterPhone: fullPhoneNumber } as NewFaultData);
+    addFault({ ...values, reporterPhone: fullPhoneNumber });
     
     setIsSubmitting(false);
     setIsSuccess(true);

@@ -20,11 +20,10 @@ export interface NewFaultData {
     address: string;
     type: FaultType;
     description: string;
+    id: string; // Custom, sequential ID like FAULT-0001
 }
 
 export interface Fault extends NewFaultData {
-  id: string; // Custom, sequential ID like FAULT-0001
-  docId: string; // The actual Firestore document ID
   status: Status;
   createdAt: any; // Firestore Timestamp
   assignedTo?: string; // Worker ID

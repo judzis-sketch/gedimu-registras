@@ -78,8 +78,8 @@ export function useCollection<T = any>(
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
         for (const doc of snapshot.docs) {
-          // Here we pass the actual Firestore doc ID as 'docId'
-          results.push({ ...(doc.data() as T), docId: doc.id, id: doc.data().id });
+          // Here we pass the actual Firestore doc ID as 'id'
+          results.push({ ...(doc.data() as T), id: doc.id });
         }
         setData(results);
         setError(null);

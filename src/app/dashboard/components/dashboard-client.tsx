@@ -643,7 +643,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               </TableRow>
             ) : (
               displayedAndSortedFaults.map((fault) => (
-              <TableRow key={fault.docId}>
+              <TableRow key={fault.id}>
                 <TableCell className="font-medium">{fault.id}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2" title={fault.type}>
