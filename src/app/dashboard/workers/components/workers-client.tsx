@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Trash2, Edit } from "lucide-react";
+import { PlusCircle, Trash2, Edit, Loader2 } from "lucide-react";
 import { useWorkers } from "@/context/workers-context";
 import { useToast } from "@/hooks/use-toast";
 import { FaultType, NewWorkerData, Worker } from "@/lib/types";
@@ -55,17 +55,19 @@ import { faultTypeTranslations } from "@/lib/utils";
 const workerFormSchema = z.object({
   name: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   email: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  password: z.string().min(8, { message: "Slaptažodis turi būti bent 8 simbolių ilgio." }).or(z.literal("")),
+  password: z.string().min(8, "Slaptažodis turi būti bent 8 simbolių ilgio.").optional().or(z.literal("")),
   specialty: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "Reikia pasirinkti bent vieną specializaciją.",
   }),
 });
 
+
 export function WorkersClient() {
-  const { workers, addWorker, updateWorker, deleteWorker } = useWorkers();
+  const { workers, addWorker, updateWorker, deleteWorker, isLoading } = useWorkers();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof workerFormSchema>>({
     resolver: zodResolver(workerFormSchema),
@@ -93,30 +95,47 @@ export function WorkersClient() {
             specialty: [],
         });
     }
-  }, [editingWorker, form]);
+  }, [editingWorker, form, isDialogOpen]);
 
 
-  function onSubmit(data: z.infer<typeof workerFormSchema>) {
+  async function onSubmit(data: z.infer<typeof workerFormSchema>) {
+     setIsSubmitting(true);
      const workerData = { ...data };
-     if (!workerData.password) {
+     
+     // Ensure password is not sent on update if empty
+     if (editingWorker && !workerData.password) {
         delete workerData.password;
+     } else if (!editingWorker && !workerData.password) {
+        form.setError("password", { message: "Slaptažodis yra privalomas naujam darbuotojui."});
+        setIsSubmitting(false);
+        return;
      }
 
-    if (editingWorker) {
-      updateWorker(editingWorker.id, workerData as Partial<NewWorkerData>);
-      toast({
-        title: "Darbuotojas atnaujintas",
-        description: `${data.name} duomenys buvo sėkmingai atnaujinti.`,
+    try {
+      if (editingWorker) {
+        updateWorker(editingWorker.id, workerData as Partial<NewWorkerData>);
+        toast({
+          title: "Darbuotojas atnaujintas",
+          description: `${data.name} duomenys buvo sėkmingai atnaujinti.`,
+        });
+      } else {
+        await addWorker(workerData as NewWorkerData);
+        toast({
+          title: "Darbuotojas pridėtas",
+          description: `${data.name} buvo sėkmingai pridėtas prie sistemos.`,
+        });
+      }
+      closeDialog();
+    } catch (error: any) {
+      console.error("Failed to save worker", error);
+       toast({
+        title: "Klaida",
+        description: error.message || "Nepavyko išsaugoti darbuotojo.",
+        variant: "destructive"
       });
-    } else {
-      addWorker(data as NewWorkerData);
-      toast({
-        title: "Darbuotojas pridėtas",
-        description: `${data.name} buvo sėkmingai pridėtas prie sistemos.`,
-      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    closeDialog();
   }
   
   const handleEditClick = (worker: Worker) => {
@@ -129,7 +148,6 @@ export function WorkersClient() {
     toast({
         title: "Darbuotojas pašalintas",
         description: `Darbuotojas buvo sėkmingai pašalintas iš sistemos.`,
-        variant: "destructive",
       });
   }
 
@@ -184,7 +202,7 @@ export function WorkersClient() {
                         <FormItem>
                           <FormLabel>El. paštas</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="jonas@pavyzdys.com" {...field} />
+                            <Input type="email" placeholder="jonas@pavyzdys.com" {...field} disabled={!!editingWorker} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -253,7 +271,10 @@ export function WorkersClient() {
                     <DialogClose asChild>
                        <Button type="button" variant="outline" onClick={closeDialog}>Atšaukti</Button>
                     </DialogClose>
-                    <Button type="submit">Išsaugoti</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Išsaugoti
+                    </Button>
                   </DialogFooter>
                 </form>
               </Form>
@@ -264,7 +285,6 @@ export function WorkersClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>Vardas</TableHead>
                 <TableHead>El. paštas</TableHead>
                 <TableHead>Specializacija</TableHead>
@@ -272,9 +292,15 @@ export function WorkersClient() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {workers.map((worker) => (
+              {isLoading && (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    </TableCell>
+                </TableRow>
+              )}
+              {workers?.map((worker) => (
                 <TableRow key={worker.id}>
-                  <TableCell className="font-medium">{worker.id}</TableCell>
                   <TableCell>{worker.name}</TableCell>
                   <TableCell>{worker.email}</TableCell>
                   <TableCell>
@@ -303,7 +329,7 @@ export function WorkersClient() {
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>Ar esate tikri?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Šis veiksmas negrįžtamas. Darbuotojas bus visam laikui pašalintas iš sistemos.
+                                    Šis veiksmas negrįžtamas. Darbuotojas bus visam laikui pašalintas iš sistemos. Tai nepanaikins vartotojo paskyros, tik įrašą duomenų bazėje.
                                 </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

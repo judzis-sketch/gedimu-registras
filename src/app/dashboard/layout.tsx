@@ -16,7 +16,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons";
-import { LayoutDashboard, User, Wrench, LogOut, Users, Ban } from "lucide-react";
+import { LayoutDashboard, User, Wrench, LogOut, Users, Ban, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,9 @@ import React from "react";
 import { useWorkers } from "@/context/workers-context";
 import { useFaults } from "@/context/faults-context";
 import { Badge } from "@/components/ui/badge";
-
-const MOCK_LOGGED_IN_WORKER_ID = "worker-1";
-
+import { useAuth, useUser } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardLayout({
   children,
@@ -36,37 +36,48 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const role = searchParams.get("role") || "user";
-  const { faults } = useFaults();
-  const { workers } = useWorkers();
+  const auth = useAuth();
+  const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const role = searchParams.get("role") || "worker";
+  
+  const { faults, isLoading: faultsLoading } = useFaults();
+  const { workers, isLoading: workersLoading } = useWorkers();
+  
+  const MOCK_LOGGED_IN_WORKER_ID = user?.uid;
 
-  const handleLogout = () => {
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({ title: "Sėkmingai atsijungėte." });
+      router.push("/login");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Atsijungimo klaida",
+        description: "Nepavyko atsijungti. Bandykite dar kartą.",
+      });
+    }
   };
   
-  const worker = workers.find(w => w.id === MOCK_LOGGED_IN_WORKER_ID);
-
-  const newFaultsCount = faults.filter(f => f.status === 'new').length;
-  const workerTasksCount = faults.filter(f => f.assignedTo === MOCK_LOGGED_IN_WORKER_ID && f.status !== 'completed').length;
+  const worker = workers?.find(w => w.id === MOCK_LOGGED_IN_WORKER_ID);
+  
+  const newFaultsCount = faults?.filter(f => f.status === 'new').length ?? 0;
+  const workerTasksCount = faults?.filter(f => f.assignedTo === MOCK_LOGGED_IN_WORKER_ID && f.status !== 'completed').length ?? 0;
 
 
   const userConfig = {
     admin: {
       name: "Admin",
       role: "Sistemos valdytojas",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+      avatar: `https://i.pravatar.cc/150?u=${user?.email}`,
     },
     worker: {
-      name: worker?.name || "Darbuotojas",
+      name: worker?.name || user?.email || "Darbuotojas",
       role: "Specialistas",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704e",
+      avatar: `https://i.pravatar.cc/150?u=${user?.email}`,
     },
-    user: {
-      name: "Vartotojas",
-      role: "Pranešėjas",
-      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f",
-    }
-  }[role as "admin" | "worker" | "user"] || { name: "Vartotojas", role: "Pranešėjas", avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f" };
+  }[role as "admin" | "worker"] || { name: "Vartotojas", role: "Pranešėjas", avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f" };
 
   let title = "Gedimų Registras";
   if (role === 'admin' && pathname === '/dashboard') {
@@ -81,6 +92,16 @@ export default function DashboardLayout({
     // When admin views worker's tasks
     title = "Mano užduotys";
   }
+  
+  if (isUserLoading || workersLoading) {
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+
 
   return (
     <SidebarProvider>
@@ -148,7 +169,7 @@ export default function DashboardLayout({
                   <Link href={{ pathname: "/dashboard/my-tasks", query: { role: role } }}>
                     <Wrench />
                     <span className="flex-1">Mano užduotys</span>
-                    {workerTasksCount > 0 && (
+                    {role === 'worker' && workerTasksCount > 0 && (
                       <Badge variant="secondary" className="ml-auto h-5">{workerTasksCount}</Badge>
                     )}
                   </Link>

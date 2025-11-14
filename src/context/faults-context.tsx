@@ -1,66 +1,73 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { faults as initialFaultsData } from '@/lib/data';
+import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
-
-// Add random dates for createdAt and updatedAt for initial data
-const getInitialFaults = () => {
-    const now = new Date();
-    return initialFaultsData.map((fault, index) => ({
-        ...fault,
-        createdAt: new Date(now.getTime() - (initialFaultsData.length - index) * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(now.getTime() - (initialFaultsData.length - index) * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
-    }));
-};
-
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface FaultsContextType {
-  faults: Fault[];
-  setFaults: React.Dispatch<React.SetStateAction<Fault[]>>;
+  faults: Fault[] | null;
+  isLoading: boolean;
   addFault: (faultData: NewFaultData) => void;
+  updateFault: (faultId: string, faultData: Partial<Fault>) => void;
 }
 
 const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
-  const [faults, setFaults] = useState<Fault[]>(getInitialFaults());
+  const firestore = useFirestore();
+  const faultsCollection = useMemoFirebase(() => collection(firestore, 'issues'), [firestore]);
+  const { data: faults, isLoading } = useCollection<Fault>(faultsCollection);
+  
   const { workers } = useWorkers();
 
   const addFault = (faultData: NewFaultData) => {
+    if (!workers) return;
+
     const newFaultBase = {
       ...faultData,
-      id: `FAULT-${String(faults.length + 1).padStart(3, '0')}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
 
     const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
     let assignedWorker: Worker | undefined;
 
     if (suitableWorkers.length > 0) {
-      // Find worker with the least active tasks
       const workerTasksCount = suitableWorkers.map(worker => ({
         worker,
-        taskCount: faults.filter(f => f.assignedTo === worker.id && f.status !== 'completed').length
+        taskCount: (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length
       }));
 
       workerTasksCount.sort((a, b) => a.taskCount - b.taskCount);
       assignedWorker = workerTasksCount[0].worker;
     }
 
-    const newFault: Fault = {
+    const newFault: Omit<Fault, 'id'> = {
       ...newFaultBase,
       status: assignedWorker ? 'assigned' : 'new',
-      assignedTo: assignedWorker?.id,
+      assignedTo: assignedWorker?.id || '',
     };
     
-    setFaults(prevFaults => [newFault, ...prevFaults]);
+    addDocumentNonBlocking(faultsCollection, newFault);
   };
 
+  const updateFault = (faultId: string, faultData: Partial<Fault>) => {
+    const faultRef = doc(firestore, 'issues', faultId);
+    updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
+  };
+
+  const contextValue = useMemo(() => ({
+    faults,
+    isLoading,
+    addFault,
+    updateFault,
+  }), [faults, isLoading, workers]);
+
   return (
-    <FaultsContext.Provider value={{ faults, setFaults, addFault }}>
+    <FaultsContext.Provider value={contextValue}>
       {children}
     </FaultsContext.Provider>
   );

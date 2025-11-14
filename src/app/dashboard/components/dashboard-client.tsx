@@ -81,17 +81,17 @@ const statusConfig: Record<
   completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white", ringClassName: "ring-green-600", icon: CheckCircle },
 };
 
-const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
+const FormattedDate = ({ date }: { date: any }) => {
     const [formattedDate, setFormattedDate] = useState("");
 
     useEffect(() => {
         if (!date) return;
-        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        const dateObj = date.toDate ? date.toDate() : new Date(date);
         setFormattedDate(format(dateObj, 'yyyy-MM-dd HH:mm', { locale: lt }));
     }, [date]);
 
     if (!formattedDate) {
-        return null;
+        return <span className="text-muted-foreground">...</span>;
     }
 
     return <>{formattedDate}</>;
@@ -166,8 +166,8 @@ export function DashboardClient({
   view,
   workerId,
 }: DashboardClientProps) {
-  const { faults, setFaults } = useFaults();
-  const { workers } = useWorkers();
+  const { faults, updateFault, isLoading: faultsLoading } = useFaults();
+  const { workers, isLoading: workersLoading } = useWorkers();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
@@ -211,61 +211,43 @@ export function DashboardClient({
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
-    let updatedFault: Fault | undefined;
-
-    setFaults((prevFaults) =>
-      prevFaults.map((fault) => {
-        if (fault.id === faultId) {
-          updatedFault = { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
-          return updatedFault;
-        }
-        return fault;
-      })
-    );
     
-    if (updatedFault) {
-      const workerName = workers.find(w => w.id === workerId)?.name;
-      toast({
-        title: "Specialistas priskirtas",
-        description: `Specialistas ${workerName} priskirtas gedimui ${faultId}.`,
-      });
-      openNotificationEditor(updatedFault, statusConfig.assigned.label, workerName);
-    }
+    const fault = faults?.find(f => f.id === faultId);
+    if (!fault) return;
+
+    const updatedFaultData = { assignedTo: workerId, status: "assigned" as Status };
+    updateFault(faultId, updatedFaultData);
+    
+    const workerName = workers?.find(w => w.id === workerId)?.name;
+    toast({
+      title: "Specialistas priskirtas",
+      description: `Specialistas ${workerName} priskirtas gedimui ${faultId}.`,
+    });
+    
+    openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig.assigned.label, workerName);
     
     setIsUpdating(null);
   };
 
   const handleUpdateStatus = (faultId: string, status: Status) => {
     setIsUpdating(faultId);
-    let updatedFault: Fault | undefined;
+    const fault = faults?.find(f => f.id === faultId);
+    if (!fault) return;
 
-    setFaults((prevFaults) =>
-      prevFaults.map((fault) => {
-        if (fault.id === faultId) {
-          updatedFault = { ...fault, status: status, updatedAt: new Date() };
-          return updatedFault;
-        }
-        return fault;
-      })
-    );
+    const updatedFaultData = { status: status };
+    updateFault(faultId, updatedFaultData);
 
-     if(updatedFault) {
-        toast({
-            title: `Būsena pakeista`,
-            description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}".`,
-        });
-        openNotificationEditor(updatedFault, statusConfig[status].label);
-     }
+    toast({
+        title: `Būsena pakeista`,
+        description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}".`,
+    });
+    openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig[status].label);
 
-     setIsUpdating(null);
+    setIsUpdating(null);
   };
   
   const handleSaveWorkerSignature = (faultId: string, signatureDataUrl: string) => {
-    setFaults(prevFaults =>
-      prevFaults.map(f =>
-        f.id === faultId ? { ...f, workerSignature: signatureDataUrl, updatedAt: new Date() } : f
-      )
-    );
+    updateFault(faultId, { workerSignature: signatureDataUrl });
     setFaultToSign(null);
     toast({
       title: "Darbuotojo parašas išsaugotas!",
@@ -274,6 +256,7 @@ export function DashboardClient({
   };
 
 const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: string) => {
+    if (!faults) return;
     const currentFault = faults.find(f => f.id === faultId);
     if (!currentFault || !currentFault.workerSignature) return;
 
@@ -306,32 +289,23 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         });
         const actImageUrl = canvas.toDataURL('image/png');
 
-        let updatedFault: Fault | undefined;
-        setFaults(prevFaults =>
-            prevFaults.map(f => {
-                if (f.id === faultId) {
-                    updatedFault = {
-                        ...f,
-                        status: "completed",
-                        customerSignature: signatureDataUrl,
-                        actImageUrl: actImageUrl,
-                        updatedAt: new Date()
-                    };
-                    return updatedFault;
-                }
-                return f;
-            })
-        );
+        const updatedFaultData: Partial<Fault> = {
+            status: "completed",
+            customerSignature: signatureDataUrl,
+            actImageUrl: actImageUrl,
+        };
         
-        if (updatedFault) {
-            toast({
-                title: "Aktas sėkmingai pasirašytas ir suformuotas!",
-                description: `Būsena pakeista į "Užbaigtas".`,
-            });
-             if (view === 'admin') {
-                openNotificationEditor(updatedFault, statusConfig.completed.label);
-            }
+        updateFault(faultId, updatedFaultData);
+        
+        toast({
+            title: "Aktas sėkmingai pasirašytas ir suformuotas!",
+            description: `Būsena pakeista į "Užbaigtas".`,
+        });
+
+        if (view === 'admin') {
+             openNotificationEditor({ ...currentFault, ...updatedFaultData, updatedAt: new Date(), createdAt: new Date() }, statusConfig.completed.label);
         }
+
     } catch (error) {
         console.error("Error capturing act:", error);
         toast({
@@ -412,6 +386,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   };
 
   const handleDownloadAllActs = async () => {
+    if (!displayedAndSortedFaults) return;
     setIsDownloadingAll(true);
     toast({
         title: "Pradedamas aktų archyvavimas...",
@@ -436,7 +411,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             a.href = url;
             a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
             document.body.appendChild(a);
-a.click();
+            a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             toast({
@@ -464,11 +439,12 @@ a.click();
 
 
   const getWorkerName = (workerId?: string) => {
-    if (!workerId) return "Nepriskirta";
+    if (!workerId || !workers) return "Nepriskirta";
     return workers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
   
   const getAssignedWorker = (fault: Fault) => {
+    if (!workers) return undefined;
     return workers.find((w) => w.id === fault.assignedTo);
   }
   
@@ -481,60 +457,72 @@ a.click();
     }
   };
 
-  const displayedAndSortedFaults = faults.filter(fault => {
-    if (view === 'worker') {
-        return fault.assignedTo === workerId && fault.status !== 'completed';
-    }
+  const displayedAndSortedFaults = useMemo(() => {
+    if (!faults) return [];
+    return faults.filter(fault => {
+        if (view === 'worker') {
+            return fault.assignedTo === workerId && fault.status !== 'completed';
+        }
 
-    if (view === 'admin') {
-      const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-      const dateMatch = dateRange?.from && dateRange.to 
-        ? new Date(fault.createdAt) >= dateRange.from && new Date(fault.createdAt) <= dateRange.to
-        : true;
-      return statusMatch && dateMatch;
-    }
+        if (view === 'admin') {
+          const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
+          const dateMatch = dateRange?.from && dateRange.to 
+            ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
+            : true;
+          return statusMatch && dateMatch;
+        }
 
-    return false;
-  }).sort((a, b) => {
-    if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
-      const dateA = new Date(a[sortKey as 'updatedAt' | 'createdAt']).getTime();
-      const dateB = new Date(b[sortKey as 'updatedAt' | 'createdAt']).getTime();
-      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-    }
-    
-    let valA: string | undefined;
-    let valB: string | undefined;
-    
-    if (sortKey === 'status') {
-      valA = statusConfig[a.status].label;
-      valB = statusConfig[b.status].label;
-    } else if (sortKey === 'assignedTo') {
-      valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
-      valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
-    } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
-      valA = a[sortKey];
-      valB = b[sortKey];
-    }
+        return false;
+      }).sort((a, b) => {
+        if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
+          const dateA = a[sortKey]?.toDate ? a[sortKey].toDate().getTime() : 0;
+          const dateB = b[sortKey]?.toDate ? b[sortKey].toDate().getTime() : 0;
+          return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+        
+        let valA: string | undefined;
+        let valB: string | undefined;
+        
+        if (sortKey === 'status') {
+          valA = statusConfig[a.status].label;
+          valB = statusConfig[b.status].label;
+        } else if (sortKey === 'assignedTo') {
+          valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
+          valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
+        } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
+          valA = a[sortKey];
+          valB = b[sortKey];
+        }
 
 
-    if (valA === undefined || valB === undefined) return 0;
-    
-    if (sortDirection === 'asc') {
-      return valA.localeCompare(valB, 'lt', { numeric: true });
-    } else {
-      return valB.localeCompare(valA, 'lt', { numeric: true });
-    }
-  });
+        if (valA === undefined || valB === undefined) return 0;
+        
+        if (sortDirection === 'asc') {
+          return valA.localeCompare(valB, 'lt', { numeric: true });
+        } else {
+          return valB.localeCompare(valA, 'lt', { numeric: true });
+        }
+      });
+  }, [faults, view, workerId, statusFilter, dateRange, sortKey, sortDirection, workers]);
+
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
-  const statusCounts = {
-    all: faults.length,
-    new: faults.filter(fault => fault.status === 'new').length,
-    assigned: faults.filter(fault => fault.status === 'assigned').length,
-    'in-progress': faults.filter(fault => fault.status === 'in-progress').length,
-    completed: faults.filter(fault => fault.status === 'completed').length
-  };
+  const statusCounts = useMemo(() => ({
+    all: faults?.length ?? 0,
+    new: faults?.filter(fault => fault.status === 'new').length ?? 0,
+    assigned: faults?.filter(fault => fault.status === 'assigned').length ?? 0,
+    'in-progress': faults?.filter(fault => fault.status === 'in-progress').length ?? 0,
+    completed: faults?.filter(fault => fault.status === 'completed').length ?? 0
+  }), [faults]);
+
+  if (faultsLoading || workersLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const adminView = (
     <div className="space-y-4">
@@ -737,7 +725,7 @@ a.click();
                          </>
                       )}
                       <DropdownMenuSeparator />
-                      {view === "admin" && (
+                      {view === "admin" && workers && (
                           <>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>

@@ -4,6 +4,7 @@ import { FaultsProvider } from "@/context/faults-context";
 import { WorkersProvider } from "@/context/workers-context";
 import { ForbiddenWordsProvider } from "@/context/forbidden-words-context";
 import "./globals.css";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
   title: "Gedimų Registras",
@@ -30,14 +31,16 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
-        <WorkersProvider>
-          <FaultsProvider>
-            <ForbiddenWordsProvider>
-              {children}
-              <Toaster />
-            </ForbiddenWordsProvider>
-          </FaultsProvider>
-        </WorkersProvider>
+        <FirebaseClientProvider>
+          <WorkersProvider>
+            <FaultsProvider>
+              <ForbiddenWordsProvider>
+                {children}
+                <Toaster />
+              </ForbiddenWordsProvider>
+            </FaultsProvider>
+          </WorkersProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

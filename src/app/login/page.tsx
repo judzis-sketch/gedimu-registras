@@ -9,54 +9,118 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Header } from "@/components/header";
+import { useAuth, useUser } from "@/firebase";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("admin@zarasubustas.lt");
+  const [password, setPassword] = useState("password123");
+  const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState("admin");
 
-  const handleLogin = () => {
-    if (role === 'worker') {
-      router.push(`/dashboard/my-tasks?role=${role}`);
-    } else {
-      router.push(`/dashboard?role=${role}`);
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      let userCredential;
+      if (role === 'admin') {
+         userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } else { // worker
+         userCredential = await signInWithEmailAndPassword(auth, email, password);
+      }
+      
+      toast({
+        title: "Sėkmingai prisijungėte",
+        description: `Sveiki atvykę, ${userCredential.user.email}!`,
+      });
+
+      if (role === 'worker') {
+         router.push(`/dashboard/my-tasks?role=${role}`);
+      } else {
+         router.push(`/dashboard?role=${role}`);
+      }
+
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Prisijungimo klaida",
+        description: error.message || "Patikrinkite savo prisijungimo duomenis.",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
+  
+  if (isUserLoading) {
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
+  if (user) {
+    router.push('/dashboard?role=admin');
+    return null;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <div className="flex-1 flex items-center justify-center">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle className="text-2xl font-headline">Prisijungimas</CardTitle>
-            <CardDescription>
-              Pasirinkite savo vaidmenį, kad pamatytumėte atitinkamą sąsają.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <RadioGroup defaultValue="admin" onValueChange={setRole}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="admin" id="admin" />
-                  <Label htmlFor="admin">Administratorius</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="worker" id="worker" />
-                  <Label htmlFor="worker">Darbuotojas</Label>
-                </div>
-              </RadioGroup>
-              <Button onClick={handleLogin} className="w-full">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Tabs defaultValue="admin" className="w-full max-w-sm" onValueChange={setRole}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="admin">Administratorius</TabsTrigger>
+            <TabsTrigger value="worker">Darbuotojas</TabsTrigger>
+          </TabsList>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl font-headline">Prisijungimas</CardTitle>
+              <CardDescription>
+                Įveskite savo duomenis, kad prisijungtumėte.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">El. paštas</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="vardas@pavyzdys.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Slaptažodis</Label>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required 
+                />
+              </div>
+              <Button onClick={handleLogin} className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Prisijungti
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Tabs>
       </div>
-       <footer className="bg-card border-t">
+      <footer className="bg-card border-t">
         <div className="container mx-auto py-6 px-4 md:px-6 text-center text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Gedimų Registras. Visos teisės saugomos.</p>
         </div>

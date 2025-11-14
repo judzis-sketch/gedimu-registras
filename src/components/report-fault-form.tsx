@@ -27,7 +27,6 @@ import { useState, useMemo, useCallback } from "react";
 import { useFaults } from "@/context/faults-context";
 import { useForbiddenWords } from "@/context/forbidden-words-context";
 import { FaultType, NewFaultData } from "@/lib/types";
-import { useWorkers } from "@/context/workers-context";
 import { faultTypeTranslations } from "@/lib/utils";
 
 
@@ -37,7 +36,6 @@ export function ReportFaultForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const { addFault } = useFaults();
   const { forbiddenWords } = useForbiddenWords();
-  const { workers } = useWorkers();
 
   const formSchema = useMemo(() => z.object({
     reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
@@ -72,7 +70,6 @@ export function ReportFaultForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
     const fullPhoneNumber = `+370${values.reporterPhone}`;
     addFault({ ...values, reporterPhone: fullPhoneNumber } as NewFaultData);
