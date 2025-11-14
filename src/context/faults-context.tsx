@@ -2,12 +2,12 @@
 
 import React, { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
 import { Fault, NewFaultData, Worker, Status } from '@/lib/types';
-import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, serverTimestamp, addDoc, query, where } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, addDoc, query, where, Query } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useSearchParams } from 'next/navigation';
 
 interface FaultsContextType {
   faults: Fault[] | null;
@@ -21,19 +21,25 @@ const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
   const { user } = useUser();
+  const searchParams = useSearchParams();
+  const view = searchParams.get('view') || 'worker';
   
   const faultsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
+
     const faultsCollectionRef = collection(firestore, 'issues');
     
-    if (user && user.email !== 'admin@zarasubustas.lt') {
-      return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
+    // For the admin dashboard, always show all faults.
+    if (user.email === 'admin@zarasubustas.lt' && view !== 'worker') {
+        return faultsCollectionRef;
     }
-    
-    return faultsCollectionRef;
-  }, [firestore, user]);
 
-  const { data: faults, isLoading } = useCollection<Fault>(faultsQuery);
+    // For any other user (or admin viewing "My Tasks"), filter by their UID.
+    return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
+  }, [firestore, user, view]);
+
+
+  const { data: faults, isLoading } = useCollection<Fault>(faultsQuery as Query<Fault>);
 
   const addFault = useCallback((faultData: NewFaultData) => {
     if (!firestore) {
@@ -42,9 +48,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const faultsCollection = collection(firestore, 'issues');
-
-    // This logic for ID generation might have race conditions in a high-traffic app.
-    // For a production app, a Firebase Function or a dedicated counter document would be better.
+    
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
         const existingIds = faults
@@ -60,7 +64,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       ...faultData,
       customId: newCustomId,
       assignedTo: '', // Always unassigned on creation
-      status: 'new' as const, // Always 'new' on creation
+      status: 'new' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -74,7 +78,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error adding fault to Firestore:", permissionError);
       errorEmitter.emit('permission-error', permissionError);
     });
-  }, [firestore, faults]); // Depends on faults for ID generation
+  }, [firestore]); // Removed `faults` to stabilize the function
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;

@@ -166,7 +166,7 @@ function DashboardLayoutContent({
                   isActive={pathname === "/dashboard/my-tasks"}
                   tooltip="Mano užduotys"
                 >
-                  <Link href={{ pathname: "/dashboard/my-tasks", query: { role: role } }}>
+                  <Link href={{ pathname: "/dashboard/my-tasks", query: { role: role, view: 'worker' } }}>
                     <Wrench />
                     <span className="flex-1">Mano užduotys</span>
                     {role === 'worker' && workerTasksCount > 0 && (
