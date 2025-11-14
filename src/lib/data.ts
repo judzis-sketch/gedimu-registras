@@ -1,0 +1,68 @@
+import type { Fault, Worker } from "./types";
+
+export const workers: Worker[] = [
+  { id: "worker-1", name: "Jonas Jonaitis", specialty: ["electricity", "general"] },
+  { id: "worker-2", name: "Petras Petraitis", specialty: ["plumbing"] },
+  { id: "worker-3", name: "Ona Onaitė", specialty: ["heating", "general"] },
+];
+
+export const faults: Fault[] = [
+  {
+    id: "FAULT-001",
+    reporterName: "Marija Marijona",
+    reporterEmail: "marija@email.com",
+    address: "Vilniaus g. 1, Vilnius",
+    type: "plumbing",
+    description: "Laša vanduo iš čiaupo virtuvėje. Atrodo, kad sugedo tarpinė.",
+    status: "assigned",
+    assignedTo: "worker-2",
+    createdAt: new Date("2024-07-20T09:00:00Z"),
+    updatedAt: new Date("2024-07-20T11:00:00Z"),
+  },
+  {
+    id: "FAULT-002",
+    reporterName: "Kazys Kaziukas",
+    reporterEmail: "kazys@email.com",
+    address: "Kauno al. 23-5, Kaunas",
+    type: "electricity",
+    description: "Nėra elektros viename kambaryje. Saugikliai atrodo tvarkingi.",
+    status: "new",
+    createdAt: new Date("2024-07-21T14:30:00Z"),
+    updatedAt: new Date("2024-07-21T14:30:00Z"),
+  },
+  {
+    id: "FAULT-003",
+    reporterName: "Barbora Barboriuke",
+    reporterEmail: "barbora@email.com",
+    address: "Gedimino pr. 9, Vilnius",
+    type: "heating",
+    description: "Vienas radiatorius visiškai nešyla, nors sistema įjungta.",
+    status: "completed",
+    assignedTo: "worker-3",
+    createdAt: new Date("2024-07-19T08:00:00Z"),
+    updatedAt: new Date("2024-07-19T15:00:00Z"),
+  },
+  {
+    id: "FAULT-004",
+    reporterName: "Juozas Juozapavicius",
+    reporterEmail: "juozas@email.com",
+    address: "Klaipėdos g. 15, Klaipėda",
+    type: "general",
+    description: "Sulūžo laiptinės durų spyna, nebeužsirakina.",
+    status: "in-progress",
+    assignedTo: "worker-1",
+    createdAt: new Date("2024-07-22T10:00:00Z"),
+    updatedAt: new Date("2024-07-22T10:30:00Z"),
+  },
+    {
+    id: "FAULT-005",
+    reporterName: "Rūta Rūtelė",
+    reporterEmail: "ruta@email.com",
+    address: "Šiaulių pl. 5, Šiauliai",
+    type: "plumbing",
+    description: "Užsikimšo vonios nutekėjimas, vanduo nebėga.",
+    status: "new",
+    createdAt: new Date("2024-07-22T11:00:00Z"),
+    updatedAt: new Date("2024-07-22T11:00:00Z"),
+  },
+];
