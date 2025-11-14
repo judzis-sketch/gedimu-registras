@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -42,6 +42,9 @@ import { useFaults } from "@/context/faults-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToastAction } from "@/components/ui/toast";
 import { SignaturePad } from "@/components/signature-pad";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 
 interface DashboardClientProps {
   initialWorkers: Worker[];
@@ -229,6 +232,50 @@ export function DashboardClient({
     }
   };
 
+  const handleDownloadAct = async (fault: Fault) => {
+    if (!fault.signature) return;
+
+    // Create a temporary, hidden div to render the act HTML for capturing
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.width = '800px'; // A4-like width
+    container.style.padding = '20px';
+    container.style.backgroundColor = 'white';
+    container.style.color = 'black';
+    container.innerHTML = fault.signature;
+    document.body.appendChild(container);
+
+    try {
+        const canvas = await html2canvas(container, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`atliktu-darbu-aktas-${fault.id}.pdf`);
+
+    } catch (error) {
+        console.error("Klaida generuojant PDF:", error);
+        toast({
+            variant: "destructive",
+            title: "Klaida",
+            description: "Nepavyko sugeneruoti PDF failo."
+        });
+    } finally {
+        // Clean up the temporary div
+        document.body.removeChild(container);
+    }
+};
+
   const getWorkerName = (workerId?: string) => {
     if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
     return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
@@ -335,12 +382,18 @@ export function DashboardClient({
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.signature}
+                        disabled={fault.status !== 'in-progress' || !!fault.signature}
                         onClick={() => setFaultToSign(fault)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         <span>Pasirašyti aktą</span>
                       </DropdownMenuItem>
+                       {view === 'admin' && fault.signature && (
+                        <DropdownMenuItem onClick={() => handleDownloadAct(fault)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          <span>Atsisiųsti aktą</span>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       {view === "admin" && (
                         <>
