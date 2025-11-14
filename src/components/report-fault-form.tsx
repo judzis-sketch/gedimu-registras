@@ -23,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useFaults } from "@/context/faults-context";
 import { useForbiddenWords } from "@/context/forbidden-words-context";
 import { FaultType, NewFaultData } from "@/lib/types";
@@ -52,16 +52,7 @@ export function ReportFaultForm() {
       errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
     }),
     description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." })
-      .refine(value => {
-        if (!forbiddenWords || forbiddenWords.length === 0) {
-            return true;
-        }
-        const regex = new RegExp(`\\b(${forbiddenWords.join("|")})\\b`, "gi");
-        return !regex.test(value);
-      }, {
-        message: "Aprašyme yra neleistinų žodžių. Prašome juos pašalinti."
-      })
-  }), [forbiddenWords]);
+  }), []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,6 +64,15 @@ export function ReportFaultForm() {
       description: "",
     },
   });
+
+  const censorText = useCallback((text: string) => {
+    if (!forbiddenWords || forbiddenWords.length === 0) {
+        return text;
+    }
+    const regex = new RegExp(`\\b(${forbiddenWords.join("|")})\\b`, "gi");
+    return text.replace(regex, (match) => '*'.repeat(match.length));
+  }, [forbiddenWords]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
@@ -205,6 +205,10 @@ export function ReportFaultForm() {
                   placeholder="Išsamiai aprašykite gedimą..."
                   className="resize-y min-h-[100px]"
                   {...field}
+                  onChange={(e) => {
+                    const censoredValue = censorText(e.target.value);
+                    field.onChange(censoredValue);
+                  }}
                 />
               </FormControl>
               <FormMessage />
