@@ -11,6 +11,7 @@ export interface NewWorkerData {
 
 export interface Worker extends Omit<NewWorkerData, 'password'> {
   docId: string; // This will be the Firebase document ID
+  fcmToken?: string;
 }
 
 export interface NewFaultData {

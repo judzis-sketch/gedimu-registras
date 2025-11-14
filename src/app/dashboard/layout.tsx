@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -24,11 +24,13 @@ import { Button } from "@/components/ui/button";
 import { useWorkers } from "@/context/workers-context";
 import { useFaults } from "@/context/faults-context";
 import { Badge } from "@/components/ui/badge";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useMessaging } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { FaultsProvider } from "@/context/faults-context";
 import { WorkersProvider } from "@/context/workers-context";
+import { getToken } from "firebase/messaging";
+import { firebaseConfig } from "@/firebase/config";
 
 function DashboardLayoutContent({
   children,
@@ -44,13 +46,53 @@ function DashboardLayoutContent({
   const role = searchParams.get("role") || "worker";
   
   const { faults, isLoading: faultsLoading } = useFaults();
-  const { workers, isLoading: workersLoading } = useWorkers();
+  const { workers, isLoading: workersLoading, updateWorker } = useWorkers();
+  const messaging = useMessaging();
+
+  const requestNotificationPermission = useCallback(async () => {
+    const messagingInstance = await messaging;
+    if (!messagingInstance || !user) return;
+    
+    console.log('Requesting notification permission...');
+    try {
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        console.log('Notification permission granted.');
+        
+        const currentToken = await getToken(messagingInstance, { vapidKey: 'YOUR_VAPID_KEY' }); // You need to generate this in Firebase Console
+        
+        if (currentToken) {
+          console.log('FCM Token:', currentToken);
+          const worker = workers?.find(w => w.docId === user.uid);
+          if (worker && worker.fcmToken !== currentToken) {
+            updateWorker(user.uid, { fcmToken: currentToken });
+            console.log('FCM token saved to Firestore.');
+          }
+        } else {
+          console.log('No registration token available. Request permission to generate one.');
+        }
+      } else {
+        console.log('Unable to get permission to notify.');
+      }
+    } catch (error) {
+       console.error('An error occurred while requesting permission or getting token. ', error);
+    }
+  }, [messaging, user, workers, updateWorker]);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [isUserLoading, user, router]);
+
+  useEffect(() => {
+    if (role === 'worker' && user && messaging) {
+      requestNotificationPermission();
+    }
+  }, [role, user, messaging, requestNotificationPermission]);
+
 
   const handleLogout = async () => {
     try {

@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo, useCallback } fro
 import { NewWorkerData, Worker } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 
@@ -47,9 +47,13 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
   const updateWorker = useCallback((workerId: string, workerData: Partial<NewWorkerData>) => {
     if (!firestore) return;
     const workerRef = doc(firestore, 'employees', workerId);
-    // Password should not be part of the update data for a worker profile
-    const { password, ...updateData } = workerData;
-    setDocumentNonBlocking(workerRef, updateData, { merge: true });
+    
+    if ('password' in workerData) {
+        const { password, ...updateData } = workerData;
+        setDocumentNonBlocking(workerRef, updateData, { merge: true });
+    } else {
+        updateDocumentNonBlocking(workerRef, workerData);
+    }
   }, [firestore]);
 
   const deleteWorker = useCallback((workerId: string) => {
