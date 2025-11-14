@@ -12,7 +12,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 interface FaultsContextType {
   faults: Fault[] | null;
   isLoading: boolean;
-  addFault: (faultData: Omit<NewFaultData, 'id' | 'docId'>) => void;
+  addFault: (faultData: NewFaultData) => void;
   updateFault: (faultId: string, faultData: Partial<Fault>) => void;
 }
 
@@ -25,13 +25,13 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   
   const { workers } = useWorkers();
 
-  const addFault = async (faultData: Omit<NewFaultData, 'id' | 'docId'>) => {
+  const addFault = async (faultData: NewFaultData) => {
     if (!faultsCollection || !firestore) return;
 
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
       const existingIds = faults
-        .map(f => f.id ? parseInt(f.id.replace('FAULT-', ''), 10) : 0)
+        .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
         .filter(n => !isNaN(n));
       if (existingIds.length > 0) {
         nextIdNumber = Math.max(...existingIds) + 1;
@@ -41,7 +41,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const newFaultBase = {
       ...faultData,
-      id: newFaultId,
+      customId: newFaultId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -80,15 +80,8 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
-    if (!firestore || !faults) return;
-    
-    const faultDoc = faults.find(f => f.docId === faultId);
-    if (!faultDoc) {
-        console.error(`Fault with custom ID ${faultId} not found for update.`);
-        return;
-    }
-
-    const faultRef = doc(firestore, 'issues', faultDoc.docId);
+    if (!firestore) return;
+    const faultRef = doc(firestore, 'issues', faultId);
     updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
   };
 
@@ -113,3 +106,5 @@ export const useFaults = () => {
   }
   return context;
 };
+
+    
