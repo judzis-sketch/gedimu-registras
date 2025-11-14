@@ -30,7 +30,7 @@ import { FaultType, NewFaultData } from "@/lib/types";
 const formSchema = z.object({
   reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  reporterPhone: z.string().regex(/^(\+370|8)\d{8}$/, 'Neteisingas telefono numerio formatas. Turi prasidėti su +370 arba 8 ir turėti 8 skaitmenis po prefikso.'),
+  reporterPhone: z.string().length(8, "Telefono numeris turi būti sudarytas iš 8 skaitmenų.").regex(/^\d{8}$/, "Telefono numerį gali sudaryti tik skaitčiai."),
   address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
     errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
@@ -66,7 +66,8 @@ export function ReportFaultForm() {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    addFault(values as NewFaultData);
+    const fullPhoneNumber = `+370${values.reporterPhone}`;
+    addFault({ ...values, reporterPhone: fullPhoneNumber } as NewFaultData);
     
     setIsSubmitting(false);
     setIsSuccess(true);
@@ -120,17 +121,24 @@ export function ReportFaultForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Telefono numeris</FormLabel>
-                <FormControl>
-                  <Input
-                    type="tel"
-                    placeholder="+37061234567 arba 861234567"
-                    {...field}
-                    onInput={(e) => {
-                      const target = e.target as HTMLInputElement;
-                      target.value = target.value.replace(/[^0-9+()-\s]/g, "");
-                      field.onChange(target.value);
-                    }}
-                  />
+                 <FormControl>
+                  <div className="flex items-center">
+                    <span className="inline-flex items-center px-3 h-10 rounded-l-md border border-r-0 border-input bg-background text-sm text-muted-foreground">
+                      +370
+                    </span>
+                    <Input
+                      type="tel"
+                      placeholder="61234567"
+                      className="rounded-l-none"
+                      maxLength={8}
+                      {...field}
+                      onInput={(e) => {
+                        const target = e.target as HTMLInputElement;
+                        target.value = target.value.replace(/[^0-9]/g, "");
+                        field.onChange(target.value);
+                      }}
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
