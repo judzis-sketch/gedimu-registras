@@ -27,6 +27,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useFaults } from "@/context/faults-context";
 import { useForbiddenWords } from "@/context/forbidden-words-context";
 import { FaultType, NewFaultData } from "@/lib/types";
+import { useWorkers } from "@/context/workers-context";
 
 
 const faultTypeTranslations: Record<FaultType, string> = {
@@ -42,6 +43,7 @@ export function ReportFaultForm() {
   const [isSuccess, setIsSuccess] = useState(false);
   const { addFault } = useFaults();
   const { forbiddenWords } = useForbiddenWords();
+  const { workers } = useWorkers();
 
   const formSchema = useMemo(() => z.object({
     reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
