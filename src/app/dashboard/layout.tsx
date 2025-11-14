@@ -45,8 +45,6 @@ function DashboardLayoutContent({
   
   const { faults, isLoading: faultsLoading } = useFaults();
   const { workers, isLoading: workersLoading } = useWorkers();
-  
-  const MOCK_LOGGED_IN_WORKER_ID = user?.uid;
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -68,10 +66,10 @@ function DashboardLayoutContent({
     }
   };
   
-  const worker = workers?.find(w => w.id === MOCK_LOGGED_IN_WORKER_ID);
+  const worker = workers?.find(w => w.id === user?.uid);
   
   const newFaultsCount = faults?.filter(f => f.status === 'new').length ?? 0;
-  const workerTasksCount = faults?.filter(f => f.assignedTo === MOCK_LOGGED_IN_WORKER_ID && f.status !== 'completed').length ?? 0;
+  const workerTasksCount = faults?.filter(f => f.assignedTo === user?.uid && f.status !== 'completed').length ?? 0;
 
 
   const userConfig = {

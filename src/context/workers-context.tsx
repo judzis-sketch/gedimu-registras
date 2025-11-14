@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { NewWorkerData, Worker } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
@@ -37,7 +37,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
         const { password, ...workerDocData } = workerData;
         const workerRef = doc(firestore, 'employees', userCredential.user.uid);
         // Use non-blocking update for consistency
-        setDocumentNonBlocking(workerRef, { ...workerDocData, role: 'worker' }, { merge: true });
+        setDocumentNonBlocking(workerRef, { ...workerDocData, role: 'worker' }, { merge: false });
     } catch (error) {
         console.error("Error creating worker:", error);
         throw error; // Re-throw to be handled by the form
