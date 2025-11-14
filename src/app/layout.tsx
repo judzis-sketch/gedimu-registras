@@ -29,9 +29,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
         <FaultsProvider>
-            {children}
+          {children}
+          <Toaster />
         </FaultsProvider>
-        <Toaster />
       </body>
     </html>
   );

@@ -25,16 +25,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFaults } from "@/context/faults-context";
-import { NewFaultData, FaultType } from "@/lib/types";
+import { FaultType, NewFaultData } from "@/lib/types";
 
 const formSchema = z.object({
-  reporterName: z.string().min(2, "Vardas turi būti bent 2 simbolių ilgio."),
-  reporterEmail: z.string().email("Neteisingas el. pašto formatas."),
-  address: z.string().min(5, "Adresas turi būti bent 5 simbolių ilgio."),
+  reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
+  reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
+  address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
     required_error: "Prašome pasirinkti gedimo tipą.",
   }),
-  description: z.string().min(10, "Aprašymas turi būti bent 10 simbolių ilgio.").max(500, "Aprašymas negali viršyti 500 simbolių."),
+  description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." }),
 });
 
 const faultTypeTranslations: Record<FaultType, string> = {
@@ -43,7 +43,6 @@ const faultTypeTranslations: Record<FaultType, string> = {
   heating: "Šildymas",
   general: "Bendri gedimai",
 };
-
 
 export function ReportFaultForm() {
   const { toast } = useToast();
@@ -63,7 +62,6 @@ export function ReportFaultForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     addFault(values as NewFaultData);
@@ -141,7 +139,7 @@ export function ReportFaultForm() {
                     </Trigger>
                   </FormControl>
                   <SelectContent>
-                    {(Object.keys(faultTypeTranslations) as Array<keyof typeof faultTypeTranslations>).map((key) => (
+                    {(Object.keys(faultTypeTranslations) as FaultType[]).map((key) => (
                         <SelectItem key={key} value={key}>{faultTypeTranslations[key]}</SelectItem>
                     ))}
                   </SelectContent>
