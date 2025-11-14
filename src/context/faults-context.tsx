@@ -21,8 +21,7 @@ const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { workers } = useWorkers();
-
+  
   const faultsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     const faultsCollectionRef = collection(firestore, 'issues');
@@ -44,6 +43,8 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollection = collection(firestore, 'issues');
 
+    // This logic for ID generation might have race conditions in a high-traffic app.
+    // For a production app, a Firebase Function or a dedicated counter document would be better.
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
         const existingIds = faults
@@ -55,27 +56,11 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     }
     const newCustomId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
 
-    let assignedWorker: Worker | undefined = undefined;
-
-    if (workers && workers.length > 0) {
-        const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
-
-        if (suitableWorkers.length > 0) {
-            const workerTaskCounts = suitableWorkers.map(worker => {
-                const taskCount = (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length;
-                return { worker, taskCount };
-            });
-
-            workerTaskCounts.sort((a, b) => a.taskCount - b.taskCount);
-            assignedWorker = workerTaskCounts[0].worker;
-        }
-    }
-    
     const newFaultDocument = {
       ...faultData,
       customId: newCustomId,
-      assignedTo: assignedWorker ? assignedWorker.id : '',
-      status: assignedWorker ? 'assigned' as const : 'new' as const,
+      assignedTo: '', // Always unassigned on creation
+      status: 'new' as const, // Always 'new' on creation
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -86,10 +71,10 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
           operation: 'create',
           requestResourceData: newFaultDocument,
       });
-      errorEmitter.emit('permission-error', permissionError);
       console.error("Error adding fault to Firestore:", permissionError);
+      errorEmitter.emit('permission-error', permissionError);
     });
-  }, [firestore, workers, faults]);
+  }, [firestore, faults]); // Depends on faults for ID generation
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
