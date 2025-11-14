@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -20,13 +21,14 @@ import { LayoutDashboard, User, Wrench, LogOut, Users, Ban, Loader2 } from "luci
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import React from "react";
 import { useWorkers } from "@/context/workers-context";
 import { useFaults } from "@/context/faults-context";
 import { Badge } from "@/components/ui/badge";
 import { useAuth, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { FaultsProvider } from "@/context/faults-context";
+import { WorkersProvider } from "@/context/workers-context";
 
 function DashboardLayoutContent({
   children,
@@ -45,6 +47,12 @@ function DashboardLayoutContent({
   const { workers, isLoading: workersLoading } = useWorkers();
   
   const MOCK_LOGGED_IN_WORKER_ID = user?.uid;
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, router]);
 
   const handleLogout = async () => {
     try {
@@ -93,15 +101,9 @@ function DashboardLayoutContent({
     title = "Mano užduotys";
   }
   
-  if (isUserLoading || workersLoading) {
+  if (isUserLoading || workersLoading || !user) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
-
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
-
 
   return (
     <SidebarProvider>
@@ -224,6 +226,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    <WorkersProvider>
+      <FaultsProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </FaultsProvider>
+    </WorkersProvider>
   )
 }
