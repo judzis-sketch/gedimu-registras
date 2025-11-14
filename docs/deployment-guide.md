@@ -21,70 +21,59 @@ firebase login
 ```
 Ši komanda atidarys naršyklės langą, kuriame turėsite patvirtinti savo tapatybę. Įsitikinkite, kad jungiatės su ta pačia Google paskyra, kurią naudojate `Firebase Studio`.
 
-## 3. App Hosting Inicializavimas
+## 3. GitHub Repozitorijos Paruošimas (Būtinas žingsnis!)
 
-Dabar susiesime jūsų projektą su `Firebase App Hosting`.
+`Firebase App Hosting` yra neatsiejamai susijęs su `GitHub`. Automatinis diegimas veikia stebėdamas jūsų `GitHub` repozitoriją.
 
-1.  Atidarykite terminalą savo projekto pagrindiniame kataloge (tame pačiame, kur yra `package.json`, `src` ir kiti failai).
+**Prieš tęsiant, įsitikinkite, kad:**
+
+1.  **Sukūrėte `GitHub` repozitoriją:** Jei dar neturite, nueikite į `github.com` ir sukurkite naują repozitoriją šiam projektui.
+2.  **Įkėlėte kodą:** Visi jūsų programos failai turi būti įkelti (`pushed`) į tą repozitoriją. Pavyzdys, kaip tai padaryti:
+    ```bash
+    # Pridėkite visus failus
+    git add .
+    # Padarykite "commit"
+    git commit -m "Pabaigti programos pakeitimai"
+    # Nusiųskite pakeitimus į GitHub
+    git push origin main
+    ```
+
+**Tik tada, kai jūsų kodas yra `GitHub`, galite pereiti prie kito žingsnio.**
+
+## 4. App Hosting Inicializavimas
+
+Dabar susiesime jūsų `Firebase` projektą su `GitHub` repozitorija.
+
+1.  Atidarykite terminalą savo projekto pagrindiniame kataloge.
 2.  Įvykdykite šią komandą:
     ```bash
     firebase init apphosting
     ```
 3.  Proceso metu `Firebase CLI` užduos jums kelis klausimus:
     *   **Pasirinkite Firebase projektą:** Iš sąrašo pasirinkite tą patį `Firebase` projektą, kurį naudojote iki šiol. **Svarbu:** Sąraše ieškokite projekto pagal jo ID: **`studio-8901194696-cbab9`**. Pavadinimas gali skirtis, bet ID yra unikalus.
-    *   **Pasirinkite backend'o regioną:** Pasirinkite arčiausiai jūsų esantį regioną (pvz., `europe-west1` ar panašų).
-    *   **Nurodykite GitHub repozitoriją:** Jums reikės prijungti savo `GitHub` paskyrą ir nurodyti repozitoriją, kurioje saugomas šis kodas. `Firebase` naudos šią repozitoriją automatiniam diegimui. Vykdykite ekrane pateikiamas instrukcijas.
+    *   **Pasirinkite backend'o regioną:** Pasirinkite arčiausiai jūsų esantį regioną (pvz., `europe-west1`).
+    *   **Nurodykite GitHub repozitoriją:** Kai paklaus **"Set up a GitHub repository for continual deployment?"**, atsakykite `Yes`. Vykdykite ekrane pateikiamas instrukcijas – naršyklėje turėsite patvirtinti prieigą prie `GitHub` ir pasirinkti repozitoriją, kurią paruošėte 3 žingsnyje.
 
-Po šių žingsnių, jūsų `Firebase` projektas bus susietas su `GitHub` repozitorija ir paruoštas diegimui. Jūsų projekte jau yra `apphosting.yaml` konfigūracijos failas, todėl jokių papildomų nustatymų daryti nereikia.
+Po šių žingsnių, jūsų `Firebase` projektas bus susietas su `GitHub` repozitorija ir paruoštas diegimui.
 
-## 4. Ką daryti, jei `init` komanda neveikia kaip tikėtasi?
+## 5. Ką daryti, jei `init` komanda nepasiūlė susieti su GitHub?
 
-Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, `firebase init apphosting` komanda gali neparodyti projektų sąrašo, `GitHub` susiejimo klausimo ar elgtis keistai.
+Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, `firebase init apphosting` komanda gali praleisti `GitHub` susiejimo klausimą.
 
-**Pirmiausia, išvalykite seną konfigūraciją:**
-1.  Patikrinkite, ar jūsų pagrindiniame projekto kataloge yra failai pavadinimu `.firebaserc` arba `firebase.json`.
-2.  Jei šie failai egzistuoja, **ištrinkite juos**. Tai leis `Firebase CLI` pradėti procesą nuo nulio ir užduoti visus reikiamus klausimus.
-
-**Tada, patikrinkite prisijungimą ir projektus:**
-1.  Priverstinai prisijunkite iš naujo, kad įsitikintumėte, jog naudojate teisingą Google paskyrą:
+**Sprendimas – išvalykite seną konfigūraciją ir bandykite iš naujo:**
+1.  **Ištrinkite konfigūracijos failus.** Tai leis `Firebase CLI` pradėti procesą nuo nulio.
     ```bash
-    firebase login --reauth
+    rm -f firebase.json .firebaserc
     ```
-2.  Patikrinkite, ar projektas matomas, įvykdę:
+2.  **Paleiskite `init` komandą iš naujo.** Dabar turėtumėte matyti visus interaktyvius pasirinkimus, įskaitant projekto ir `GitHub` pasirinkimą.
     ```bash
-    firebase projects:list
+    firebase init apphosting
     ```
-    Sąraše turėtumėte matyti projektą su ID **`studio-8901194696-cbab9`**.
 
-3.  Kai įsitikinsite, kad viskas gerai, vėl vykdykite `firebase init apphosting`. Dabar turėtumėte matyti visus interaktyvius pasirinkimus, įskaitant projekto ir `GitHub` pasirinkimą.
-
-
-## 5. Kaip susieti programą su GitHub?
-
-`App Hosting` yra sukurtas taip, kad veiktų su `GitHub`. Tai reiškia, kad kaskart, kai įkelsite (`push`) kodo pakeitimus į savo repozitoriją, `Firebase` automatiškai pradės diegimo procesą.
-
-Jei vykdant `firebase init apphosting` praleidote `GitHub` susiejimo žingsnį arba jo nematėte, tiesiog paleiskite komandą iš naujo (prieš tai įsitikinę, kad ištrynėte `.firebaserc` ir `firebase.json` failus). `Firebase` patikrins esamą konfigūraciją ir leis jums nustatyti `GitHub` repozitoriją:
-
-1.  Paleiskite `firebase init apphosting` dar kartą.
-2.  Kai `CLI` paklaus **"Set up a GitHub repository for continual deployment?"**, atsakykite `Yes`.
-3.  Naršyklėje atsidarys langas, kuriame turėsite leisti `Firebase` pasiekti jūsų `GitHub` paskyrą.
-4.  Pasirinkite, kuriai `GitHub` paskyrai ar organizacijai priklauso jūsų repozitorija.
-5.  Iš pateikto sąrašo pasirinkite savo projekto repozitoriją. `Firebase` automatiškai nustatys visus reikiamus `webhook'us` ir `GitHub Actions`, kad diegimas veiktų.
-
-## 6. Kodo Įkėlimas į GitHub
-
-Įsitikinkite, kad visi jūsų naujausi pakeitimai yra įkelti (`pushed`) į `GitHub` repozitorijos pagrindinę (`main` arba `master`) šaką.
-
-```bash
-git add .
-git commit -m "Pabaigti programos pakeitimai"
-git push origin main
-```
-
-## 7. Diegimas
+## 6. Diegimas
 
 `Firebase App Hosting` yra sukonfigūruotas taip, kad automatiškai įdiegtų naują versiją kaskart, kai įkeliate pakeitimus į pagrindinę `GitHub` šaką.
 
-Po to, kai įkelsite kodą (`git push`), galite stebėti diegimo procesą savo `Firebase` projekto konsolėje, `App Hosting` skiltyje. Kai diegimas bus baigtas, jūsų programa bus pasiekiama viešu `Firebase` suteiktu adresu.
+Galite stebėti diegimo procesą savo `Firebase` projekto konsolėje, `App Hosting` skiltyje. Kai diegimas bus baigtas, jūsų programa bus pasiekiama viešu `Firebase` suteiktu adresu.
 
 **Viskas!** Jūsų programa dabar veikia `Firebase` infrastruktūroje. Visi būsimi pakeitimai, kuriuos įkelsite į `GitHub`, bus automatiškai įdiegiami.
