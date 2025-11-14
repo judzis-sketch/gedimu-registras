@@ -16,7 +16,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons";
-import { LayoutDashboard, User, Wrench, LogOut, Users } from "lucide-react";
+import { LayoutDashboard, User, Wrench, LogOut, Users, Ban } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,8 @@ export default function DashboardLayout({
     title = "Visos gedimų užklausos";
   } else if (role === 'admin' && pathname === '/dashboard/workers') {
     title = "Darbuotojų valdymas";
+  } else if (role === 'admin' && pathname === '/dashboard/forbidden-words') {
+    title = "Nepageidaujami žodžiai";
   } else if (role === 'worker' && pathname === '/dashboard/my-tasks') {
     title = "Mano užduotys";
   } else if (role === 'admin' && pathname === '/dashboard/my-tasks') {
@@ -119,6 +121,18 @@ export default function DashboardLayout({
                     <Link href={{ pathname: "/dashboard/workers", query: { role: 'admin' } }}>
                       <Users />
                       <span className="flex-1">Darbuotojai</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                   <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/dashboard/forbidden-words"}
+                    tooltip="Nepageidaujami žodžiai"
+                  >
+                    <Link href={{ pathname: "/dashboard/forbidden-words", query: { role: 'admin' } }}>
+                      <Ban />
+                      <span className="flex-1">Nepageidaujami žodžiai</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

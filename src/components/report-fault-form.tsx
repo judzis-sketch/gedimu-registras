@@ -23,28 +23,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useFaults } from "@/context/faults-context";
+import { useForbiddenWords } from "@/context/forbidden-words-context";
 import { FaultType, NewFaultData } from "@/lib/types";
 
-const forbiddenWords = ["keiksmas1", "keiksmas2", "netinkamaszodis"];
-
-const formSchema = z.object({
-  reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
-  reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  reporterPhone: z.string().length(8, "Telefono numeris turi būti sudarytas iš 8 skaitmenų.").regex(/^\d{8}$/, "Telefono numerį gali sudaryti tik skaitčiai."),
-  address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
-  type: z.enum(["electricity", "plumbing", "heating", "general"], {
-    errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
-  }),
-  description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." })
-  .refine((value) => {
-      const words = value.toLowerCase().split(/\s+/);
-      return !words.some(word => forbiddenWords.includes(word));
-  }, {
-      message: "Aprašyme yra netinkamų žodžių.",
-  }),
-});
 
 const faultTypeTranslations: Record<FaultType, string> = {
   electricity: "Elektra",
@@ -58,6 +41,24 @@ export function ReportFaultForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { addFault } = useFaults();
+  const { forbiddenWords } = useForbiddenWords();
+
+  const formSchema = useMemo(() => z.object({
+    reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
+    reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
+    reporterPhone: z.string().length(8, "Telefono numeris turi būti sudarytas iš 8 skaitmenų.").regex(/^\d{8}$/, "Telefono numerį gali sudaryti tik skaitčiai."),
+    address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
+    type: z.enum(["electricity", "plumbing", "heating", "general"], {
+      errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
+    }),
+    description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." })
+    .refine((value) => {
+        const words = value.toLowerCase().split(/\s+/);
+        return !words.some(word => forbiddenWords.includes(word.replace(/[.,!?;:]/g, '')));
+    }, {
+        message: "Aprašyme yra netinkamų žodžių.",
+    }),
+  }), [forbiddenWords]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
