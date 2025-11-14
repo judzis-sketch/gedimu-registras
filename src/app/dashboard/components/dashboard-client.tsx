@@ -92,14 +92,15 @@ const ActTemplate = ({ fault, assignedWorker, signatureDataUrl, innerRef }: { fa
       <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {fault.id}</h3>
       <div className="flex justify-between">
           <span>{fault.address}</span>
-          <span>{format(new Date(fault.updatedAt), 'yyyy-MM-dd')}</span>
+          <span>{format(new Date(), 'yyyy-MM-dd')}</span>
       </div>
       <p>
           Šis aktas patvirtina, kad specialistas <span className="font-semibold">{assignedWorkerName}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
       </p>
-      <div className="p-2 border rounded-md bg-gray-100">
-          <p className="font-semibold">Registruotas gedimas:</p>
-          <p>{fault.description}</p>
+      <div className="p-2 border rounded-md bg-gray-100 space-y-1">
+          <p><span className="font-semibold">Registruotas gedimas:</span> {fault.description}</p>
+          <p><span className="font-semibold">Gavimo data:</span> <FormattedDate date={fault.createdAt} /></p>
+          {fault.status === 'completed' && <p><span className="font-semibold">Užbaigimo data:</span> <FormattedDate date={fault.updatedAt} /></p>}
       </div>
       <p>
          Užsakovas <span className="font-semibold">{fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
@@ -343,20 +344,24 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     // We'll use a little hack by creating a temporary element
     // and using html2canvas on it. This is not ideal but avoids complex ReactDOM async issues here.
     const tempActContainer = document.createElement('div');
+    const createdAtFormatted = fault.createdAt ? format(new Date(fault.createdAt), 'yyyy-MM-dd HH:mm') : 'N/A';
+    const updatedAtFormatted = (fault.status === 'completed' && fault.updatedAt) ? format(new Date(fault.updatedAt), 'yyyy-MM-dd HH:mm') : 'N/A';
+
     tempActContainer.innerHTML = `
         <div class="space-y-4 text-sm bg-white p-6 text-black" style="font-family: sans-serif; width: 800px;">
           <p style="font-weight: bold; text-align: center;">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
           <h3 style="font-size: 1.125rem; font-weight: bold; text-align: center;">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
           <div style="display: flex; justify-content: space-between;">
               <span>${fault.address}</span>
-              <span>${format(new Date(fault.updatedAt), 'yyyy-MM-dd')}</span>
+              <span>${format(new Date(), 'yyyy-MM-dd')}</span>
           </div>
           <p>
               Šis aktas patvirtina, kad specialistas <span style="font-weight: 600;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
           </p>
-          <div style="padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background-color: #f3f4f6;">
-              <p style="font-weight: 600;">Registruotas gedimas:</p>
-              <p>${fault.description}</p>
+          <div style="padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background-color: #f3f4f6; space-y: 4px;">
+              <p><span style="font-weight: 600;">Registruotas gedimas:</span> ${fault.description}</p>
+              <p><span style="font-weight: 600;">Gavimo data:</span> ${createdAtFormatted}</p>
+              ${fault.status === 'completed' ? `<p><span style="font-weight: 600;">Užbaigimo data:</span> ${updatedAtFormatted}</p>` : ''}
           </div>
           <p>
              Užsakovas <span style="font-weight: 600;">${fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
@@ -807,5 +812,3 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     </>
   );
 }
-
-    
