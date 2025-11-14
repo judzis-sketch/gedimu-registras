@@ -472,11 +472,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
     
-    // The `faults` data is already pre-filtered by the useFaults hook based on the user role.
-    // Here we only apply the UI filters for the admin view.
-    let filteredFaults = faults;
+    let filteredFaults = view === 'worker' 
+        ? faults.filter(fault => fault.assignedTo === user?.uid)
+        : faults;
+
     if (view === 'admin') {
-      filteredFaults = faults.filter(fault => {
+      filteredFaults = filteredFaults.filter(fault => {
             const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
             const faultDate = fault.createdAt?.toDate ? fault.createdAt.toDate() : null;
             if (!faultDate) return statusMatch;
@@ -525,7 +526,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         
         return 0;
     });
-}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers]);
+}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
@@ -725,9 +726,8 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           return (
             <Card
               key={status}
-              isClickable={true}
               onClick={() => setStatusFilter(status)}
-              className={cn('ring-2 ring-transparent transition-all', statusFilter === status && config.ringClassName)}
+              className={cn('ring-2 ring-transparent transition-all cursor-pointer hover:bg-muted/50', statusFilter === status && config.ringClassName)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -771,66 +771,21 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           <TabsTrigger value="in-progress">Vykdomi ({statusCounts['in-progress']})</TabsTrigger>
           <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
         </TabsList>
-        <TabsContent value="all">
-          <Card>
+        
+        <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Visi gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registruoti gedimą
-              </Button>
+                <CardTitle className="font-headline">
+                    {statusFilter === 'all' ? 'Visi gedimai' : `${statusConfig[statusFilter as Status]?.label} gedimai`}
+                </CardTitle>
+                <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Registruoti gedimą
+                </Button>
             </CardHeader>
-            <CardContent>{renderTable()}</CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="new">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Nauji gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registruoti gedimą
-              </Button>
-            </CardHeader>
-            <CardContent>{renderTable()}</CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="assigned">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Priskirti gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registruoti gedimą
-              </Button>
-            </CardHeader>
-            <CardContent>{renderTable()}</CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="in-progress">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Vykdomi gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registruoti gedimą
-              </Button>
-            </CardHeader>
-            <CardContent>{renderTable()}</CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="completed">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Užbaigti gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Registruoti gedimą
-              </Button>
-            </CardHeader>
-            <CardContent>{renderTable()}</CardContent>
-          </Card>
-        </TabsContent>
+            <CardContent>
+                {renderTable()}
+            </CardContent>
+        </Card>
       </Tabs>
       <AddFaultDialog isOpen={isAddFaultDialogOpen} onOpenChange={setIsAddFaultDialogOpen} />
     </div>
@@ -844,7 +799,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         <CardContent>
           {renderTable()}
         </CardContent>
-      </Card>
+       </Card>
   );
 
   return (

@@ -29,27 +29,27 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollectionRef = collection(firestore, 'issues');
     
+    // Admin on main dashboard should see all faults
     if (user.email === 'admin@zarasubustas.lt' && view !== 'worker') {
         return faultsCollectionRef;
     }
 
+    // Worker (or admin in 'my-tasks' view) should see only their assigned, non-completed tasks
     return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
   }, [firestore, user, view]);
 
 
   const { data: faultsFromHook, isLoading } = useCollection<Fault>(faultsQuery as Query<Fault>);
-
+  
   const faults = useMemo(() => {
     if (!faultsFromHook) return null;
-    
-    // If it's a worker view (for worker or admin), filter out completed tasks on the client
-    if (view === 'worker' || (user && user.email !== 'admin@zarasubustas.lt')) {
-      return faultsFromHook.filter(fault => fault.status !== 'completed');
+
+    if (user?.email !== 'admin@zarasubustas.lt' || view === 'worker') {
+       return faultsFromHook.filter(fault => fault.status !== 'completed');
     }
     
-    // For admin on main dashboard, show all faults
     return faultsFromHook;
-  }, [faultsFromHook, view, user]);
+  }, [faultsFromHook, user, view]);
 
 
   const addFault = useCallback((faultData: NewFaultData) => {
@@ -95,7 +95,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue = useMemo(() => {
     return {
-        faults: faults,
+        faults,
         isLoading,
         addFault,
         updateFault,

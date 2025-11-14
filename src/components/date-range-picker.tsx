@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, Locale } from "date-fns"
+import { lt } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
@@ -40,11 +41,11 @@ export function DateRangePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {format(date.from, "yyyy-MM-dd", { locale: lt })} -{" "}
+                  {format(date.to, "yyyy-MM-dd", { locale: lt })}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                format(date.from, "yyyy-MM-dd", { locale: lt })
               )
             ) : (
               <span>Pasirinkite datas</span>
@@ -59,6 +60,7 @@ export function DateRangePicker({
             selected={date}
             onSelect={onDateChange}
             numberOfMonths={2}
+            locale={lt}
           />
         </PopoverContent>
       </Popover>

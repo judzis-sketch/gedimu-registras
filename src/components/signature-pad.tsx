@@ -17,6 +17,10 @@ export function SignaturePad({ onSave }: SignaturePadProps) {
 
   const save = () => {
     if (sigCanvas.current) {
+        if(sigCanvas.current.isEmpty()) {
+            alert("Prašome pasirašyti prieš išsaugant.");
+            return;
+        }
         const signature = sigCanvas.current.getTrimmedCanvas().toDataURL("image/png");
         onSave(signature);
     }
