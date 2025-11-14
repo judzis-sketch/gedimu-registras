@@ -28,16 +28,10 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollection = collection(firestore, 'issues');
     
-    // This is the critical fix.
-    // If the user is not an admin, we must create a specific query
-    // that ONLY asks for the documents the user is allowed to see.
-    // Requesting the whole collection and filtering on the client-side
-    // gets blocked by Firestore security rules.
     if (user.email !== 'admin@zarasubustas.lt') {
       return query(faultsCollection, where('assignedTo', '==', user.uid));
     }
     
-    // Admin can see all faults.
     return faultsCollection;
   }, [firestore, user]);
 
