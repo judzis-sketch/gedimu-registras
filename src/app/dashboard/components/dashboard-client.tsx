@@ -83,7 +83,7 @@ const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
     return <>{formattedDate}</>;
 };
 
-const ActTemplate = ({ fault, assignedWorker, signatureDataUrl, innerRef }: { fault: Fault, assignedWorker: Worker | undefined, signatureDataUrl?: string, innerRef?: React.Ref<HTMLDivElement> }) => {
+const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSignatureDataUrl, innerRef }: { fault: Fault, assignedWorker: Worker | undefined, workerSignatureDataUrl?: string, customerSignatureDataUrl?: string, innerRef?: React.Ref<HTMLDivElement> }) => {
   const assignedWorkerName = assignedWorker?.name || 'Nenurodytas';
   
   return (
@@ -109,14 +109,18 @@ const ActTemplate = ({ fault, assignedWorker, signatureDataUrl, innerRef }: { fa
           <div>
               <p className="font-semibold">Vykdytojas:</p>
               <p className="mt-2 font-medium">{assignedWorkerName}</p>
-              <p className="mt-8 border-b border-black"></p>
+              {workerSignatureDataUrl ? (
+                <img src={workerSignatureDataUrl} width="200" height="100" alt="Vykdytojo parašas" className="mt-2" />
+               ) : (
+                <p className="mt-8 border-b border-black"></p>
+               )}
               <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
           </div>
           <div>
                <p className="font-semibold">Užsakovas:</p>
                <p className="mt-2 font-medium">{fault.reporterName}</p>
-               {signatureDataUrl ? (
-                <img src={signatureDataUrl} width="200" height="100" alt="Kliento parašas" className="mt-2" />
+               {customerSignatureDataUrl ? (
+                <img src={customerSignatureDataUrl} width="200" height="100" alt="Užsakovo parašas" className="mt-2" />
                ) : (
                 <p className="mt-8 border-b border-black"></p>
                )}
@@ -136,7 +140,7 @@ export function DashboardClient({
   const { workers } = useWorkers();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
-  const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
+  const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("new");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -268,55 +272,86 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
      setIsUpdating(null);
   };
   
-  const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
+  const handleSaveWorkerSignature = (faultId: string, signatureDataUrl: string) => {
+    setFaults(prevFaults =>
+      prevFaults.map(f =>
+        f.id === faultId ? { ...f, workerSignature: signatureDataUrl, updatedAt: new Date() } : f
+      )
+    );
+    setFaultToSign(null);
+    toast({
+      title: "Darbuotojo parašas išsaugotas!",
+      description: "Dabar klientas gali pasirašyti aktą.",
+    });
+  };
+
+  const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: string) => {
     const currentFault = faults.find(f => f.id === faultId);
-    if (!currentFault) return;
+    if (!currentFault || !currentFault.workerSignature) return;
 
     if (actTemplateRef.current) {
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.innerHTML = `
+            <img src="${currentFault.workerSignature}" id="workerSig" />
+            <img src="${signatureDataUrl}" id="customerSig" />
+        `;
+        document.body.appendChild(tempDiv);
+        
+        const onClone = (doc: Document) => {
+            const workerImg = doc.querySelector('img[alt="Vykdytojo parašas"]') as HTMLImageElement | null;
+            if (workerImg && currentFault.workerSignature) {
+                workerImg.src = currentFault.workerSignature;
+            }
+            const customerImg = doc.querySelector('img[alt="Užsakovo parašas"]') as HTMLImageElement | null;
+            if (customerImg) {
+                customerImg.src = signatureDataUrl;
+            }
+        };
+
         const canvas = await html2canvas(actTemplateRef.current, {
             scale: 2,
             useCORS: true,
-            onclone: (document) => {
-                const signatureImg = document.querySelector('img[alt="Kliento parašas"]') as HTMLImageElement | null;
-                if(signatureImg) {
-                    signatureImg.src = signatureDataUrl;
-                }
-            }
+            onclone: onClone,
         });
-        const actHtml = canvas.toDataURL("image/png");
         
+        document.body.removeChild(tempDiv);
+        const actImageUrl = canvas.toDataURL("image/png");
+
         let updatedFault: Fault | undefined;
         setFaults(prevFaults =>
-        prevFaults.map(f => {
-            if (f.id === faultId) {
-            updatedFault = {
-                ...f,
-                status: "completed",
-                signature: actHtml, 
-                updatedAt: new Date()
-                };
-            return updatedFault;
-            }
-            return f;
-        })
+            prevFaults.map(f => {
+                if (f.id === faultId) {
+                    updatedFault = {
+                        ...f,
+                        status: "completed",
+                        customerSignature: signatureDataUrl,
+                        actImageUrl: actImageUrl,
+                        updatedAt: new Date()
+                    };
+                    return updatedFault;
+                }
+                return f;
+            })
         );
-
+        
         setFaultToSign(null);
-
         if (updatedFault) {
-        toast({
-            title: "Parašas išsaugotas ir aktas suformuotas!",
-            description: `Būsena pakeista į "Užbaigtas".`,
-            action: (
-                 <div className="flex gap-2">
-                    {createMailToAction(updatedFault, statusConfig.completed.label)}
-                    {createSmsAction(updatedFault, statusConfig.completed.label)}
-                 </div>
-            ),
-        });
+            toast({
+                title: "Aktas sėkmingai pasirašytas ir suformuotas!",
+                description: `Būsena pakeista į "Užbaigtas".`,
+                action: (
+                    <div className="flex gap-2">
+                        {createMailToAction(updatedFault, statusConfig.completed.label)}
+                        {createSmsAction(updatedFault, statusConfig.completed.label)}
+                    </div>
+                ),
+            });
         }
     }
   };
+
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
      // Create a temporary container for rendering the ActTemplate offscreen
@@ -332,15 +367,11 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
         <ActTemplate 
             fault={fault} 
             assignedWorker={getAssignedWorker(fault)}
-            signatureDataUrl={fault.signature}
+            workerSignatureDataUrl={fault.workerSignature}
+            customerSignatureDataUrl={fault.customerSignature}
         />
     );
 
-    // Using a simple ReactDOM render alternative for this case
-    // In a full app, you might use createRoot if available/needed
-    const tempDiv = document.createElement('div');
-    document.body.appendChild(tempDiv);
-    
     // We'll use a little hack by creating a temporary element
     // and using html2canvas on it. This is not ideal but avoids complex ReactDOM async issues here.
     const tempActContainer = document.createElement('div');
@@ -370,13 +401,13 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
               <div>
                   <p style="font-weight: 600;">Vykdytojas:</p>
                   <p style="margin-top: 0.5rem; font-weight: 500;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</p>
-                  <p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>
+                  ${fault.workerSignature ? `<img src="${fault.workerSignature}" width="200" height="100" alt="Vykdytojo parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
                   <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
               </div>
               <div>
                    <p style="font-weight: 600;">Užsakovas:</p>
                    <p style="margin-top: 0.5rem; font-weight: 500;">${fault.reporterName}</p>
-                   ${fault.signature ? `<img src="${fault.signature}" width="200" height="100" alt="Kliento parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
+                   ${fault.customerSignature ? `<img src="${fault.customerSignature}" width="200" height="100" alt="Užsakovo parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
                    <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
               </div>
           </div>
@@ -670,11 +701,18 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.signature}
-                        onClick={() => setFaultToSign(fault)}
+                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.workerSignature}
+                        onClick={() => setFaultToSign({fault: fault, type: 'worker'})}
                       >
                         <Edit className="mr-2 h-4 w-4" />
-                        <span>Pasirašyti aktą</span>
+                        <span>Darbuotojo parašas</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={!fault.workerSignature || !!fault.customerSignature}
+                        onClick={() => setFaultToSign({fault: fault, type: 'customer'})}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Užsakovo parašas</span>
                       </DropdownMenuItem>
                        {view === 'admin' && (
                         <DropdownMenuItem onClick={() => handleDownloadAct(fault)}>
@@ -767,11 +805,11 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
                       </div>
                 </div>
 
-                {selectedFault.signature && (
+                {selectedFault.actImageUrl && (
                   <div className="space-y-2 pt-4">
                     <h3 className="font-semibold">Atliktų darbų aktas:</h3>
                      <div className="rounded-md border bg-gray-100 dark:bg-gray-800 p-4">
-                        <img src={selectedFault.signature} alt="Pasirašytas aktas" />
+                        <img src={selectedFault.actImageUrl} alt="Pasirašytas aktas" />
                     </div>
                   </div>
                 )}
@@ -788,20 +826,33 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
               <DialogHeader>
                 <DialogTitle>Atliktų darbų akto pasirašymas</DialogTitle>
                 <DialogDescription>
-                  Peržiūrėkite atliktus darbus ir pasirašykite žemiau.
+                  {faultToSign.type === 'worker' 
+                    ? "Darbuotojas turi pasirašyti žemiau." 
+                    : "Peržiūrėkite atliktus darbus ir pasirašykite žemiau."}
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-6 text-sm">
                 <div className="border rounded-md">
                    <ActTemplate 
-                    fault={faultToSign} 
-                    assignedWorker={getAssignedWorker(faultToSign)}
+                    fault={faultToSign.fault} 
+                    assignedWorker={getAssignedWorker(faultToSign.fault)}
+                    workerSignatureDataUrl={faultToSign.type === 'customer' ? faultToSign.fault.workerSignature : undefined}
                     innerRef={actTemplateRef} 
                    />
                 </div>
                 <div>
-                  <p className="text-center font-medium mb-2">Užsakovo parašas:</p>
-                   <SignaturePad onSave={(signatureDataUrl) => handleSaveSignature(faultToSign.id, signatureDataUrl)} />
+                   <p className="text-center font-medium mb-2">
+                        {faultToSign.type === 'worker' ? 'Vykdytojo parašas:' : 'Užsakovo parašas:'}
+                    </p>
+                   <SignaturePad 
+                    onSave={(signatureDataUrl) => {
+                        if (faultToSign.type === 'worker') {
+                            handleSaveWorkerSignature(faultToSign.fault.id, signatureDataUrl);
+                        } else {
+                            handleSaveCustomerSignature(faultToSign.fault.id, signatureDataUrl);
+                        }
+                    }} 
+                   />
                 </div>
               </div>
             </>

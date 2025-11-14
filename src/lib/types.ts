@@ -27,5 +27,7 @@ export interface Fault extends NewFaultData {
   createdAt: Date;
   assignedTo?: string; // Worker ID
   updatedAt: Date;
-  signature?: string; // HTML content of the act
+  workerSignature?: string; // Worker's signature data URL
+  customerSignature?: string; // Customer's signature data URL
+  actImageUrl?: string; // Image URL of the final signed act
 }
