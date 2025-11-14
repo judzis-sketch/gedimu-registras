@@ -141,7 +141,7 @@ export function DashboardClient({
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("new");
+  const [statusFilter, setStatusFilter] = useState<Status>("new");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const actTemplateRef = useRef<HTMLDivElement>(null);
@@ -354,16 +354,23 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
 
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
-     // Create a temporary container for rendering the ActTemplate offscreen
     const elementToCapture = document.createElement('div');
     elementToCapture.style.position = 'fixed';
     elementToCapture.style.left = '-9999px';
-    elementToCapture.style.width = '800px'; // A reasonable width for A4
+    elementToCapture.style.width = '800px'; 
     elementToCapture.style.backgroundColor = 'white';
     document.body.appendChild(elementToCapture);
 
-    // This is a trick to render a component into a div for html2canvas
-    const actHtml = (
+    const tempActContainer = document.createElement('div');
+
+    // Dynamically create a React root to render the component.
+    // This is a more robust way than using innerHTML with React components.
+    const ReactDOM = await import('react-dom');
+    
+    // We need to use createRoot for React 18
+    // @ts-ignore
+    const root = ReactDOM.createRoot(tempActContainer);
+    root.render(
         <ActTemplate 
             fault={fault} 
             assignedWorker={getAssignedWorker(fault)}
@@ -371,57 +378,21 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
             customerSignatureDataUrl={fault.customerSignature}
         />
     );
-
-    // We'll use a little hack by creating a temporary element
-    // and using html2canvas on it. This is not ideal but avoids complex ReactDOM async issues here.
-    const tempActContainer = document.createElement('div');
-    const createdAtFormatted = fault.createdAt ? format(new Date(fault.createdAt), 'yyyy-MM-dd HH:mm') : 'N/A';
-    const updatedAtFormatted = (fault.status === 'completed' && fault.updatedAt) ? format(new Date(fault.updatedAt), 'yyyy-MM-dd HH:mm') : 'N/A';
-
-    tempActContainer.innerHTML = `
-        <div class="space-y-4 text-sm bg-white p-6 text-black" style="font-family: sans-serif; width: 800px;">
-          <p style="font-weight: bold; text-align: center;">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
-          <h3 style="font-size: 1.125rem; font-weight: bold; text-align: center;">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
-          <div style="display: flex; justify-content: space-between;">
-              <span>${fault.address}</span>
-              <span>${format(new Date(), 'yyyy-MM-dd')}</span>
-          </div>
-          <p>
-              Šis aktas patvirtina, kad specialistas <span style="font-weight: 600;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
-          </p>
-          <div style="padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background-color: #f3f4f6; space-y: 4px;">
-              <p><span style="font-weight: 600;">Registruotas gedimas:</span> ${fault.description}</p>
-              <p><span style="font-weight: 600;">Gavimo data:</span> ${createdAtFormatted}</p>
-              ${fault.status === 'completed' ? `<p><span style="font-weight: 600;">Užbaigimo data:</span> ${updatedAtFormatted}</p>` : ''}
-          </div>
-          <p>
-             Užsakovas <span style="font-weight: 600;">${fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
-          </p>
-          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; padding-top: 1.5rem;">
-              <div>
-                  <p style="font-weight: 600;">Vykdytojas:</p>
-                  <p style="margin-top: 0.5rem; font-weight: 500;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</p>
-                  ${fault.workerSignature ? `<img src="${fault.workerSignature}" width="200" height="100" alt="Vykdytojo parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
-                  <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
-              </div>
-              <div>
-                   <p style="font-weight: 600;">Užsakovas:</p>
-                   <p style="margin-top: 0.5rem; font-weight: 500;">${fault.reporterName}</p>
-                   ${fault.customerSignature ? `<img src="${fault.customerSignature}" width="200" height="100" alt="Užsakovo parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
-                   <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
-              </div>
-          </div>
-        </div>
-    `;
     elementToCapture.appendChild(tempActContainer);
 
-
+    // Wait a bit for images to load inside the component
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const canvas = await html2canvas(elementToCapture, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
     });
      
     document.body.removeChild(elementToCapture);
+    // @ts-ignore
+    root.unmount();
+
 
     try {
         const imgData = canvas.toDataURL('image/png');
@@ -500,7 +471,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
             a.href = url;
             a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
             document.body.appendChild(a);
-            a.click();
+a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             toast({
@@ -542,7 +513,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     }
 
     if (view === 'admin') {
-      const statusMatch = statusFilter === 'all' || fault.status === statusFilter;
+      const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
       const dateMatch = dateRange?.from && dateRange.to 
         ? new Date(fault.createdAt) >= dateRange.from && new Date(fault.createdAt) <= dateRange.to
         : true;
