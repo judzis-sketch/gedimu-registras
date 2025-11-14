@@ -49,9 +49,19 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollection = collection(firestore, 'issues');
     
+    // --- Custom ID Generation Logic ---
+    const existingIds = (faults || [])
+        .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
+        .filter(n => !isNaN(n));
+    
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const newCustomId = `FAULT-${String(maxId + 1).padStart(4, '0')}`;
+    // --- End Custom ID Generation Logic ---
+
     const newFaultDocument = {
       ...faultData,
-      assignedTo: '', // Always unassigned on creation
+      customId: newCustomId, // Assign the new sequential ID
+      assignedTo: '',
       status: 'new' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -66,7 +76,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error adding fault to Firestore:", permissionError);
       errorEmitter.emit('permission-error', permissionError);
     });
-  }, [firestore]); 
+  }, [firestore, faults]); 
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
@@ -75,37 +85,13 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const contextValue = useMemo(() => {
-    // This is a temporary solution to generate a custom ID.
-    // In a real application, this should be handled by a backend trigger/function
-    // to avoid race conditions and ensure uniqueness.
-    const faultsWithCustomId = faults?.map((fault, index, allFaults) => {
-        if (fault.customId) return fault;
-        
-        const existingIds = allFaults
-            .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
-            .filter(n => !isNaN(n));
-        
-        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-        const newCustomId = `FAULT-${String(maxId + 1).padStart(4, '0')}`;
-        
-        // This is a side-effect within a memo, which is not ideal, but
-        // it's a pragmatic solution for this specific context without a backend.
-        if (fault.docId) {
-             const faultRef = doc(firestore, 'issues', fault.docId);
-             updateDocumentNonBlocking(faultRef, { customId: newCustomId });
-        }
-
-        return { ...fault, customId: newCustomId };
-    });
-
-
     return {
-        faults: faultsWithCustomId || null,
+        faults: faults || null,
         isLoading,
         addFault,
         updateFault,
     };
-}, [faults, isLoading, addFault, updateFault, firestore]);
+  }, [faults, isLoading, addFault, updateFault]);
 
   return (
     <FaultsContext.Provider value={contextValue}>
