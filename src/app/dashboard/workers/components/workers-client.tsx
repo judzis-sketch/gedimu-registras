@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,6 +23,17 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   Form,
   FormControl,
   FormField,
@@ -35,25 +46,26 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Edit } from "lucide-react";
 import { useWorkers } from "@/context/workers-context";
 import { useToast } from "@/hooks/use-toast";
-import { FaultType, NewWorkerData } from "@/lib/types";
+import { FaultType, NewWorkerData, Worker } from "@/lib/types";
 import { faultTypeTranslations } from "@/lib/utils";
 
 const workerFormSchema = z.object({
   name: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   email: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  password: z.string().min(8, { message: "Slaptažodis turi būti bent 8 simbolių ilgio." }),
+  password: z.string().min(8, { message: "Slaptažodis turi būti bent 8 simbolių ilgio." }).or(z.literal("")),
   specialty: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "Reikia pasirinkti bent vieną specializaciją.",
   }),
 });
 
 export function WorkersClient() {
-  const { workers, addWorker } = useWorkers();
+  const { workers, addWorker, updateWorker, deleteWorker } = useWorkers();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
 
   const form = useForm<z.infer<typeof workerFormSchema>>({
     resolver: zodResolver(workerFormSchema),
@@ -65,14 +77,66 @@ export function WorkersClient() {
     },
   });
 
+  useEffect(() => {
+    if (editingWorker) {
+      form.reset({
+        name: editingWorker.name,
+        email: editingWorker.email,
+        password: "", // Password is not shown for editing
+        specialty: editingWorker.specialty,
+      });
+    } else {
+        form.reset({
+            name: "",
+            email: "",
+            password: "",
+            specialty: [],
+        });
+    }
+  }, [editingWorker, form]);
+
+
   function onSubmit(data: z.infer<typeof workerFormSchema>) {
-    addWorker(data as NewWorkerData);
+     const workerData = { ...data };
+     if (!workerData.password) {
+        delete workerData.password;
+     }
+
+    if (editingWorker) {
+      updateWorker(editingWorker.id, workerData as Partial<NewWorkerData>);
+      toast({
+        title: "Darbuotojas atnaujintas",
+        description: `${data.name} duomenys buvo sėkmingai atnaujinti.`,
+      });
+    } else {
+      addWorker(data as NewWorkerData);
+      toast({
+        title: "Darbuotojas pridėtas",
+        description: `${data.name} buvo sėkmingai pridėtas prie sistemos.`,
+      });
+    }
+    
+    closeDialog();
+  }
+  
+  const handleEditClick = (worker: Worker) => {
+    setEditingWorker(worker);
+    setIsDialogOpen(true);
+  }
+
+  const handleDeleteClick = (workerId: string) => {
+    deleteWorker(workerId);
     toast({
-      title: "Darbuotojas pridėtas",
-      description: `${data.name} buvo sėkmingai pridėtas prie sistemos.`,
-    });
-    form.reset();
+        title: "Darbuotojas pašalintas",
+        description: `Darbuotojas buvo sėkmingai pašalintas iš sistemos.`,
+        variant: "destructive",
+      });
+  }
+
+  const closeDialog = () => {
     setIsDialogOpen(false);
+    setEditingWorker(null);
+    form.reset();
   }
 
   return (
@@ -80,7 +144,10 @@ export function WorkersClient() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-headline">Darbuotojų sąrašas</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if(!open) closeDialog();
+            else setIsDialogOpen(true);
+          }}>
             <DialogTrigger asChild>
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -91,9 +158,9 @@ export function WorkersClient() {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                   <DialogHeader>
-                    <DialogTitle>Pridėti naują darbuotoją</DialogTitle>
+                    <DialogTitle>{editingWorker ? 'Redaguoti darbuotoją' : 'Pridėti naują darbuotoją'}</DialogTitle>
                     <DialogDescription>
-                      Įveskite darbuotojo duomenis ir priskirkite specializacijas.
+                      {editingWorker ? 'Pakeiskite darbuotojo duomenis.' : 'Įveskite darbuotojo duomenis ir priskirkite specializacijas.'}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -130,7 +197,7 @@ export function WorkersClient() {
                         <FormItem>
                           <FormLabel>Slaptažodis</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" placeholder={editingWorker ? 'Palikite tuščią, jei nekeičiate' : ''} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -160,7 +227,7 @@ export function WorkersClient() {
                                         checked={field.value?.includes(item)}
                                         onCheckedChange={(checked) => {
                                           return checked
-                                            ? field.onChange([...field.value, item])
+                                            ? field.onChange([...(field.value || []), item])
                                             : field.onChange(
                                                 field.value?.filter(
                                                   (value) => value !== item
@@ -184,7 +251,7 @@ export function WorkersClient() {
                   </div>
                   <DialogFooter>
                     <DialogClose asChild>
-                       <Button variant="outline" onClick={() => form.reset()}>Atšaukti</Button>
+                       <Button type="button" variant="outline" onClick={closeDialog}>Atšaukti</Button>
                     </DialogClose>
                     <Button type="submit">Išsaugoti</Button>
                   </DialogFooter>
@@ -211,7 +278,7 @@ export function WorkersClient() {
                   <TableCell>{worker.name}</TableCell>
                   <TableCell>{worker.email}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       {worker.specialty.map((spec) => (
                         <Badge key={spec} variant="secondary">
                           {faultTypeTranslations[spec as FaultType]}
@@ -220,10 +287,33 @@ export function WorkersClient() {
                     </div>
                   </TableCell>
                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" disabled>
-                        <Trash2 className="h-4 w-4" />
-                         <span className="sr-only">Ištrinti</span>
-                      </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(worker)}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Redaguoti</span>
+                        </Button>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Ištrinti</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Ar esate tikri?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Šis veiksmas negrįžtamas. Darbuotojas bus visam laikui pašalintas iš sistemos.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Atšaukti</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteClick(worker.id)}>
+                                    Ištrinti
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
