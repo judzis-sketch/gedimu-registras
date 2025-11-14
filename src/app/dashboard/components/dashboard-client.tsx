@@ -231,7 +231,6 @@ export function DashboardClient({
       description: `Specialistas ${workerName} priskirtas gedimui ${fault.customId}.`,
     });
     
-    // Open notification editor with the most up-to-date fault data
     openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig.assigned.label, workerName);
     
     setIsUpdating(null);
@@ -252,8 +251,9 @@ export function DashboardClient({
         title: `Būsena pakeista`,
         description: `Gedimo ${fault.customId} būsena pakeista į "${statusConfig[status].label}".`,
     });
-    openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig[status].label);
-
+    if (view === 'admin' || status !== 'completed') {
+        openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig[status].label);
+    }
     setIsUpdating(null);
   };
   
@@ -472,26 +472,25 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
   
-    let filteredFaults: Fault[] = [];
-
-    if (view === 'worker') {
-        // Logic for worker view: filter by assigned user and status not completed
-        if (user?.uid) {
-            filteredFaults = faults.filter(fault => fault.assignedTo === user.uid && fault.status !== 'completed');
-        }
-    } else { // Logic for admin view
-        filteredFaults = faults.filter(fault => {
+    let filteredFaults = faults;
+    if (view === 'admin') {
+      filteredFaults = faults.filter(fault => {
             const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-            
-            const dateMatch = dateRange?.from && dateRange.to && fault.createdAt?.toDate
-                ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
+            const faultDate = fault.createdAt?.toDate ? fault.createdAt.toDate() : null;
+            if (!faultDate) return statusMatch;
+
+            const dateMatch = dateRange?.from && dateRange.to 
+                ? faultDate >= dateRange.from && faultDate <= dateRange.to
                 : true;
 
             return statusMatch && dateMatch;
         });
+    } else if (view === 'worker') {
+      // For worker view, `faults` are already pre-filtered by the `useFaults` hook.
+      // We just might want to hide completed tasks.
+      filteredFaults = faults.filter(fault => fault.status !== 'completed');
     }
-  
-    // Sorting logic remains the same for both views
+
     return [...filteredFaults].sort((a, b) => {
         let valA: string | number | Date | undefined;
         let valB: string | number | Date | undefined;
@@ -528,20 +527,22 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         
         return 0;
     });
-}, [faults, view, user, statusFilter, dateRange, sortKey, sortDirection, workers]);
+}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
-  const statusCounts = useMemo(() => ({
-    all: faults?.length ?? 0,
-    new: faults?.filter(fault => fault.status === 'new').length ?? 0,
-    assigned: faults?.filter(fault => fault.status === 'assigned').length ?? 0,
-    'in-progress': faults?.filter(fault => fault.status === 'in-progress').length ?? 0,
-    completed: faults?.filter(fault => fault.status === 'completed').length ?? 0
-  }), [faults]);
+  const statusCounts = useMemo(() => {
+    const allFaults = faults || [];
+    return {
+    all: allFaults.length,
+    new: allFaults.filter(fault => fault.status === 'new').length,
+    assigned: allFaults.filter(fault => fault.status === 'assigned').length,
+    'in-progress': allFaults.filter(fault => fault.status === 'in-progress').length,
+    completed: allFaults.filter(fault => fault.status === 'completed').length
+  }}, [faults]);
 
-  if (faultsLoading || workersLoading) {
+  if (faultsLoading || (workersLoading && view === 'admin')) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -643,7 +644,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
               <SortableHeader sortKey="status" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Būsena</SortableHeader>
-              <SortableHeader sortKey="assignedTo" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Priskirta</SortableHeader>
+              {view === 'admin' && <SortableHeader sortKey="assignedTo" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Priskirta</SortableHeader>}
               {view === 'worker' && <TableHead>Keisti būseną</TableHead>}
               <SortableHeader sortKey="updatedAt" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Atnaujinta</SortableHeader>
               <TableHead className="text-right">Veiksmai</TableHead>
@@ -652,7 +653,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           <TableBody>
             {displayedAndSortedFaults.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={view === 'worker' ? 10 : 8} className="h-24 text-center">
+                <TableCell colSpan={view === 'worker' ? 9 : 8} className="h-24 text-center">
                   {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
@@ -675,7 +676,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                     {statusConfig[fault.status].label}
                   </Badge>
                 </TableCell>
-                <TableCell>{getWorkerName(fault.assignedTo)}</TableCell>
+                {view === 'admin' && <TableCell>{getWorkerName(fault.assignedTo)}</TableCell>}
                 {view === 'worker' && (
                     <TableCell>
                         <div className="flex flex-col gap-2">

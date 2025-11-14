@@ -3,8 +3,8 @@
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, setDoc, addDoc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, serverTimestamp, setDoc, addDoc, query, where } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -20,18 +20,36 @@ const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
-  const faultsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'issues') : null, [firestore]);
-  const { data: faults, isLoading } = useCollection<Fault>(faultsCollection);
-  
+  const { user } = useUser();
   const { workers } = useWorkers();
 
+  const faultsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+
+    const faultsCollection = collection(firestore, 'issues');
+    
+    // This is the critical fix.
+    // If the user is not an admin, we must create a specific query
+    // that ONLY asks for the documents the user is allowed to see.
+    // Requesting the whole collection and filtering on the client-side
+    // gets blocked by Firestore security rules.
+    if (user.email !== 'admin@zarasubustas.lt') {
+      return query(faultsCollection, where('assignedTo', '==', user.uid));
+    }
+    
+    // Admin can see all faults.
+    return faultsCollection;
+  }, [firestore, user]);
+
+  const { data: faults, isLoading } = useCollection<Fault>(faultsQuery);
+
   const addFault = (faultData: NewFaultData) => {
-    if (!faultsCollection || !firestore) {
+    if (!firestore) {
         console.error("Firestore not initialized, cannot add fault.");
         return;
     }
+    const faultsCollection = collection(firestore, 'issues');
 
-    // 1. Generate Custom Sequential ID
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
         const existingIds = faults
@@ -43,40 +61,30 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     }
     const newCustomId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
 
-    // 2. Find the best worker to assign the task to
-    let assignedWorkerId: string | undefined = undefined;
-    let finalStatus: 'new' | 'assigned' = 'new';
-
+    let assignedWorker: Worker | undefined = undefined;
     if (workers && workers.length > 0) {
-        // Find workers with the right specialty
         const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
 
         if (suitableWorkers.length > 0) {
-            // Count active tasks for each suitable worker
             const workerTaskCounts = suitableWorkers.map(worker => {
                 const taskCount = (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length;
-                return { workerId: worker.id, taskCount };
+                return { worker, taskCount };
             });
 
-            // Sort workers by task count to find the one with the fewest tasks
             workerTaskCounts.sort((a, b) => a.taskCount - b.taskCount);
-            
-            assignedWorkerId = workerTaskCounts[0].workerId;
-            finalStatus = 'assigned';
+            assignedWorker = workerTaskCounts[0].worker;
         }
     }
 
-    // 3. Prepare the final new fault document
     const newFaultDocument = {
       ...faultData,
       customId: newCustomId,
-      status: finalStatus,
-      assignedTo: assignedWorkerId || '',
+      status: assignedWorker ? 'assigned' as const : 'new' as const,
+      assignedTo: assignedWorker ? assignedWorker.id : '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    // 4. Add the document to Firestore
     addDoc(faultsCollection, newFaultDocument).catch(error => {
       errorEmitter.emit(
         'permission-error',
@@ -93,7 +101,6 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
     const faultRef = doc(firestore, 'issues', faultId);
-    // Use non-blocking update for better UI responsiveness
     updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
   };
 
