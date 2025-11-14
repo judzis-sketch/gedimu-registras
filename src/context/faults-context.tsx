@@ -41,6 +41,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
         console.error("Firestore not initialized, cannot add fault.");
         return;
     }
+
     const faultsCollection = collection(firestore, 'issues');
 
     let nextIdNumber = 1;
@@ -55,6 +56,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     const newCustomId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
 
     let assignedWorker: Worker | undefined = undefined;
+
     if (workers && workers.length > 0) {
         const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
 
@@ -68,7 +70,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
             assignedWorker = workerTaskCounts[0].worker;
         }
     }
-
+    
     const newFaultDocument = {
       ...faultData,
       customId: newCustomId,
