@@ -161,9 +161,6 @@ export function DashboardClient({
          <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
              Vykdomas
          </DropdownMenuItem>
-         <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
-             Užbaigtas
-         </DropdownMenuItem>
      </DropdownMenuSubContent>
    </DropdownMenuSub>
  );
@@ -654,7 +651,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.workerSignature}
+                        disabled={fault.status !== 'in-progress' || !!fault.workerSignature}
                         onClick={() => setFaultToSign({fault: fault, type: 'worker'})}
                       >
                         <Edit className="mr-2 h-4 w-4" />
