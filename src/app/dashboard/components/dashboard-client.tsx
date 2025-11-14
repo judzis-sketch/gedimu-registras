@@ -133,16 +133,21 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
   );
 };
 
-const SortableHeader = ({ sortKey: key, children, handleSort, currentSortKey, currentSortDirection }: { sortKey: SortKey, children: React.ReactNode, handleSort: (key: SortKey) => void, currentSortKey: SortKey, currentSortDirection: 'asc' | 'desc' }) => (
-    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
-      <div className="flex items-center gap-2">
-        {children}
-        {currentSortKey === key && (
-          currentSortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-        )}
-      </div>
-    </TableHead>
-  );
+const SortableHeader = ({ sortKey: key, children, handleSort, currentSortKey, currentSortDirection }: { sortKey: SortKey, children: React.ReactNode, handleSort: (key: SortKey) => void, currentSortKey: SortKey, currentSortDirection: 'asc' | 'desc' }) => {
+    const isActive = currentSortKey === key;
+    return (
+        <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
+        <div className="flex items-center gap-2">
+            {children}
+            {isActive ? (
+                currentSortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+            ) : (
+                <ArrowDown className="h-4 w-4 text-muted-foreground/50" />
+            )}
+        </div>
+        </TableHead>
+    );
+};
 
 export function DashboardClient({
   view,
