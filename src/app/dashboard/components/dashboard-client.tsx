@@ -32,7 +32,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle, ArrowUp, ArrowDown, PlusCircle } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle, ArrowUp, ArrowDown, PlusCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -183,6 +183,8 @@ export function DashboardClient({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
   const [isAddFaultDialogOpen, setIsAddFaultDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const openNotificationEditor = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
     const subject = `Jūsų gedimo pranešimo (ID: ${fault.customId}) būsena atnaujinta`;
@@ -467,6 +469,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
       setSortKey(key);
       setSortDirection('asc');
     }
+    setCurrentPage(1); // Reset to first page on sort
   };
 
   const displayedAndSortedFaults = useMemo(() => {
@@ -528,6 +531,14 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     });
 }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
 
+  const totalPages = Math.ceil(displayedAndSortedFaults.length / ITEMS_PER_PAGE);
+
+  const paginatedFaults = useMemo(() => {
+    if (view === 'worker') return displayedAndSortedFaults;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return displayedAndSortedFaults.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [displayedAndSortedFaults, currentPage, ITEMS_PER_PAGE, view]);
+
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
@@ -541,6 +552,11 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     completed: allFaults.filter(fault => fault.status === 'completed').length
   }}, [faults]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateRange]);
+
+
   if (faultsLoading || (workersLoading && view === 'admin')) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -550,7 +566,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   }
   
   function renderTable() {
+    const faultsToRender = view === 'admin' ? paginatedFaults : displayedAndSortedFaults;
     return (
+        <>
         <Table>
           <TableHeader>
             <TableRow>
@@ -567,14 +585,14 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayedAndSortedFaults.length === 0 ? (
+            {faultsToRender.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={view === 'worker' ? 9 : 8} className="h-24 text-center">
                   {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
             ) : (
-              displayedAndSortedFaults.map((fault) => (
+              faultsToRender.map((fault) => (
               <TableRow key={fault.docId}>
                 <TableCell className="font-medium">{fault.customId}</TableCell>
                 <TableCell>
@@ -714,6 +732,37 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             )))}
           </TableBody>
         </Table>
+        {view === 'admin' && totalPages > 1 && (
+            <div className="flex items-center justify-end space-x-2 py-4">
+                <div className="flex-1 text-sm text-muted-foreground">
+                    Rodoma {paginatedFaults.length} iš {displayedAndSortedFaults.length} įrašų.
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        Ankstesnis
+                    </Button>
+                    <span className="text-sm font-medium">
+                        {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Kitas
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        )}
+        </>
     );
   }
 
