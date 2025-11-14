@@ -70,16 +70,10 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const newFaultDocument = {
-      reporterName: faultData.reporterName,
-      reporterEmail: faultData.reporterEmail,
-      reporterPhone: faultData.reporterPhone,
-      address: faultData.address,
-      type: faultData.type,
-      description: faultData.description,
-      
+      ...faultData,
       customId: newCustomId,
-      status: assignedWorker ? 'assigned' as const : 'new' as const,
       assignedTo: assignedWorker ? assignedWorker.id : '',
+      status: assignedWorker ? 'assigned' as const : 'new' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
