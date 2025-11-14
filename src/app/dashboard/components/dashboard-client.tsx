@@ -236,49 +236,6 @@ export function DashboardClient({
      setIsUpdating(null);
   };
   
-  const getActHtml = (fault: Fault, signatureDataUrl?: string) => {
-    const assignedWorkerName = getAssignedWorker(fault)?.name || 'Nenurodytas';
-    let signatureHtml = '<p class="mt-8 border-b border-foreground/50"></p>';
-    if (signatureDataUrl) {
-      signatureHtml = `<img src="${signatureDataUrl}" width="200" height="100" alt="Kliento parašas" style="margin-top: 0.5rem;" />`
-    }
-
-    return `
-      <div class="space-y-4 text-sm" style="font-family: sans-serif; color: black; background: white; padding: 2rem;">
-        <p class="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
-        <h3 class="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
-        <div class="flex justify-between">
-            <span>${fault.address}</span>
-            <span>${format(new Date(), 'yyyy-MM-dd')}</span>
-        </div>
-        <p>
-            Šis aktas patvirtina, kad specialistas <span class="font-semibold">${assignedWorkerName}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
-        </p>
-        <div class="p-2 border rounded-md bg-muted/50">
-            <p class="font-semibold">Registruotas gedimas:</p>
-            <p>${fault.description}</p>
-        </div>
-        <p>
-           Užsakovas <span class="font-semibold">${fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
-        </p>
-        <div class="grid grid-cols-2 gap-8 pt-6" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; padding-top: 1.5rem;">
-            <div>
-                <p class="font-semibold">Vykdytojas:</p>
-                <p class="mt-2 font-medium">${assignedWorkerName}</p>
-                <p class="mt-8 border-b border-foreground/50" style="margin-top: 2rem; border-bottom-width: 1px;"></p>
-                <p class="text-xs text-center">(parašas, vardas, pavardė)</p>
-            </div>
-            <div>
-                 <p class="font-semibold">Užsakovas:</p>
-                 <p class="mt-2 font-medium">${fault.reporterName}</p>
-                 ${signatureHtml}
-                 <p class="text-xs text-center">(parašas, vardas, pavardė)</p>
-            </div>
-        </div>
-      </div>
-    `;
-  };
-  
   const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
     const currentFault = faults.find(f => f.id === faultId);
     if (!currentFault) return;
@@ -288,17 +245,13 @@ export function DashboardClient({
             scale: 2,
             useCORS: true,
             onclone: (document) => {
-                const signatureImg = document.querySelector('#signature-image') as HTMLImageElement | null;
+                const signatureImg = document.querySelector('img[alt="Kliento parašas"]') as HTMLImageElement | null;
                 if(signatureImg) {
-                    signatureImg.style.display = 'block';
+                    signatureImg.src = signatureDataUrl;
                 }
             }
         });
         const actHtml = canvas.toDataURL("image/png");
-        
-        // This is a simplified approach, saving the image data URL as the "act".
-        // In a real app, you'd save the structured data and generate the view on demand.
-        // For PDF generation, we'll convert this image.
         
         let updatedFault: Fault | undefined;
         setFaults(prevFaults =>
@@ -307,7 +260,7 @@ export function DashboardClient({
             updatedFault = {
                 ...f,
                 status: "completed",
-                signature: actHtml, // Saving the generated image of the act
+                signature: actHtml, 
                 updatedAt: new Date()
                 };
             return updatedFault;
@@ -329,40 +282,74 @@ export function DashboardClient({
   };
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
-     const elementToCapture = document.createElement('div');
-     elementToCapture.style.position = 'fixed';
-     elementToCapture.style.left = '-9999px';
-     elementToCapture.style.width = '800px';
-     elementToCapture.style.backgroundColor = 'white';
-     document.body.appendChild(elementToCapture);
+     // Create a temporary container for rendering the ActTemplate offscreen
+    const elementToCapture = document.createElement('div');
+    elementToCapture.style.position = 'fixed';
+    elementToCapture.style.left = '-9999px';
+    elementToCapture.style.width = '800px'; // A reasonable width for A4
+    elementToCapture.style.backgroundColor = 'white';
+    document.body.appendChild(elementToCapture);
 
-     let canvas: HTMLCanvasElement;
+    // This is a trick to render a component into a div for html2canvas
+    const actHtml = (
+        <ActTemplate 
+            fault={fault} 
+            assignedWorker={getAssignedWorker(fault)}
+            signatureDataUrl={fault.signature}
+        />
+    );
 
-     if (fault.signature?.startsWith('data:image/png;base64,')) {
-         // It's a signature act image, just draw it on canvas
-         canvas = await new Promise((resolve) => {
-             const img = new window.Image();
-             img.src = fault.signature!;
-             img.onload = () => {
-                 const cvs = document.createElement('canvas');
-                 cvs.width = img.width;
-                 cvs.height = img.height;
-                 const ctx = cvs.getContext('2d');
-                 ctx?.drawImage(img, 0, 0);
-                 resolve(cvs);
-             };
-         });
-     } else {
-        // It's an unsigned fault, render the template
-        const actHtml = getActHtml(fault);
-        elementToCapture.innerHTML = actHtml;
-        canvas = await html2canvas(elementToCapture, {
-            scale: 2,
-            useCORS: true,
-        });
-     }
+    // Using a simple ReactDOM render alternative for this case
+    // In a full app, you might use createRoot if available/needed
+    const tempDiv = document.createElement('div');
+    document.body.appendChild(tempDiv);
+    
+    // We'll use a little hack by creating a temporary element
+    // and using html2canvas on it. This is not ideal but avoids complex ReactDOM async issues here.
+    const tempActContainer = document.createElement('div');
+    tempActContainer.innerHTML = `
+        <div class="space-y-4 text-sm bg-white p-6 text-black" style="font-family: sans-serif; width: 800px;">
+          <p style="font-weight: bold; text-align: center;">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
+          <h3 style="font-size: 1.125rem; font-weight: bold; text-align: center;">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
+          <div style="display: flex; justify-content: space-between;">
+              <span>${fault.address}</span>
+              <span>${format(new Date(), 'yyyy-MM-dd')}</span>
+          </div>
+          <p>
+              Šis aktas patvirtina, kad specialistas <span style="font-weight: 600;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
+          </p>
+          <div style="padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background-color: #f3f4f6;">
+              <p style="font-weight: 600;">Registruotas gedimas:</p>
+              <p>${fault.description}</p>
+          </div>
+          <p>
+             Užsakovas <span style="font-weight: 600;">${fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; padding-top: 1.5rem;">
+              <div>
+                  <p style="font-weight: 600;">Vykdytojas:</p>
+                  <p style="margin-top: 0.5rem; font-weight: 500;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</p>
+                  <p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>
+                  <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
+              </div>
+              <div>
+                   <p style="font-weight: 600;">Užsakovas:</p>
+                   <p style="margin-top: 0.5rem; font-weight: 500;">${fault.reporterName}</p>
+                   ${fault.signature ? `<img src="${fault.signature}" width="200" height="100" alt="Kliento parašas" style="margin-top: 0.5rem;" />` : '<p style="margin-top: 2rem; border-bottom: 1px solid black;"></p>'}
+                   <p style="font-size: 0.75rem; text-align: center;">(parašas, vardas, pavardė)</p>
+              </div>
+          </div>
+        </div>
+    `;
+    elementToCapture.appendChild(tempActContainer);
+
+
+    const canvas = await html2canvas(elementToCapture, {
+        scale: 2,
+        useCORS: true,
+    });
      
-     document.body.removeChild(elementToCapture);
+    document.body.removeChild(elementToCapture);
 
     try {
         const imgData = canvas.toDataURL('image/png');
@@ -389,7 +376,7 @@ export function DashboardClient({
         const y = 10;
 
         pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
-        return pdf.blob();
+        return pdf.output('blob');
 
     } catch (error) {
         console.error("Klaida generuojant PDF:", error);
@@ -433,30 +420,38 @@ export function DashboardClient({
         }
     }
 
-    try {
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast({
-            title: "Archyvas sėkmingai sukurtas!",
-            description: "Pradedamas ZIP failo atsisiuntimas."
-        });
-    } catch (error) {
-        console.error("Klaida kuriant ZIP archyvą:", error);
+    if (Object.keys(zip.files).length > 0) {
+        try {
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast({
+                title: "Archyvas sėkmingai sukurtas!",
+                description: "Pradedamas ZIP failo atsisiuntimas."
+            });
+        } catch (error) {
+            console.error("Klaida kuriant ZIP archyvą:", error);
+            toast({
+                variant: "destructive",
+                title: "Klaida",
+                description: "Nepavyko sukurti ZIP failo."
+            });
+        }
+    } else {
         toast({
             variant: "destructive",
-            title: "Klaida",
-            description: "Nepavyko sukurti ZIP failo."
+            title: "Nėra duomenų atsisiuntimui",
+            description: "Pagal pasirinktus filtrus nerasta aktų, kuriuos būtų galima atsisiųsti."
         });
-    } finally {
-        setIsDownloadingAll(false);
     }
+
+    setIsDownloadingAll(false);
   }
 
 
@@ -608,7 +603,7 @@ export function DashboardClient({
                         <Edit className="mr-2 h-4 w-4" />
                         <span>Pasirašyti aktą</span>
                       </DropdownMenuItem>
-                       {view === 'admin' && fault.signature && (
+                       {view === 'admin' && (
                         <DropdownMenuItem onClick={() => handleDownloadAct(fault)}>
                           <Download className="mr-2 h-4 w-4" />
                           <span>Atsisiųsti aktą</span>
@@ -728,21 +723,7 @@ export function DashboardClient({
                 </div>
                 <div>
                   <p className="text-center font-medium mb-2">Užsakovo parašas:</p>
-                  <SignaturePad onSave={(signature) => {
-                    const actEl = actTemplateRef.current;
-                    if (actEl) {
-                        const signaturePlaceholder = actEl.querySelector('.text-xs.text-center + div');
-                        const signatureImg = document.createElement('img');
-                        signatureImg.src = signature;
-                        signatureImg.alt = "Kliento parašas";
-                        signatureImg.className = "mt-2";
-                        signatureImg.id = "signature-image";
-                        signatureImg.style.display = 'none'; // hide for now
-                        signaturePlaceholder?.appendChild(signatureImg);
-
-                        handleSaveSignature(faultToSign.id, signature);
-                    }
-                  }} />
+                   <SignaturePad onSave={(signatureDataUrl) => handleSaveSignature(faultToSign.id, signatureDataUrl)} />
                 </div>
               </div>
             </>
