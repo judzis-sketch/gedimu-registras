@@ -461,9 +461,15 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
+    
+    let idToFilterBy: string | undefined = undefined;
+    if (view === 'worker') {
+        idToFilterBy = workerId;
+    }
+
     return faults.filter(fault => {
         if (view === 'worker') {
-            return fault.assignedTo === workerId && fault.status !== 'completed';
+            return fault.assignedTo === idToFilterBy && fault.status !== 'completed';
         }
 
         if (view === 'admin') {
