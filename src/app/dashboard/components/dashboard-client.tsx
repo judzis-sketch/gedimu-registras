@@ -16,6 +16,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +43,6 @@ import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
 import { useWorkers } from "@/context/workers-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToastAction } from "@/components/ui/toast";
 import { SignaturePad } from "@/components/signature-pad";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -50,14 +51,23 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
 import Link from "next/link";
-
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface DashboardClientProps {
   view: "admin" | "worker";
   workerId?: string;
 }
 
-type SortKey = 'id' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt';
+type SortKey = 'id' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'description';
+
+interface NotificationContent {
+    fault: Fault;
+    subject: string;
+    emailBody: string;
+    smsBody: string;
+}
 
 const statusConfig: Record<
   Status,
@@ -169,49 +179,32 @@ export function DashboardClient({
   });
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
 
- const createMailToAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
-  const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
-  let body = `Laba diena, ${fault.reporterName},\n\nInformuojame, kad jūsų gedimo pranešimo (ID: ${fault.id}), adresu ${fault.address}, būsena buvo pakeista į "${newStatusLabel}".\n\n`;
-
-  if (assignedWorkerName) {
-    body += `Gedimą tvarkys specialistas: ${assignedWorkerName}.\n\n`;
-  }
-  
-  if (newStatusLabel === 'Užbaigtas') {
-      body += `Jūsų pranešta problema buvo išspręsta.\n\n`;
-  }
-
-  body += "Pagarbiai,\nGedimų Registras";
-
-  const mailtoLink = `mailto:${fault.reporterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-  return (
-    <ToastAction altText="Siųsti el. laišką" asChild>
-      <a href={mailtoLink}><Send className="mr-2 h-4 w-4" /> El. laiškas</a>
-    </ToastAction>
-  )
-};
-
-const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
-    let body = `Laba diena, informuojame, kad gedimo ${fault.id} (${fault.address}) būsena pakeista į "${newStatusLabel}".`;
+  const openNotificationEditor = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
+    const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
+    let emailBody = `Laba diena, ${fault.reporterName},\n\nInformuojame, kad jūsų gedimo pranešimo (ID: ${fault.id}), adresu ${fault.address}, būsena buvo pakeista į "${newStatusLabel}".\n\n`;
+    let smsBody = `Laba diena, informuojame, kad gedimo ${fault.id} (${fault.address}) būsena pakeista į "${newStatusLabel}".`;
 
     if (assignedWorkerName) {
-        body += ` Priskirtas specialistas: ${assignedWorkerName}.`;
+        emailBody += `Gedimą tvarkys specialistas: ${assignedWorkerName}.\n\n`;
+        smsBody += ` Priskirtas specialistas: ${assignedWorkerName}.`;
     }
     
     if (newStatusLabel === 'Užbaigtas') {
-        body += ` Problema išspręsta.`;
+        emailBody += `Jūsų pranešta problema buvo išspręsta.\n\n`;
+        smsBody += ` Problema išspręsta.`;
     }
 
-    const smsLink = `sms:${fault.reporterPhone}?body=${encodeURIComponent(body)}`;
-
-    return (
-        <ToastAction altText="Siųsti SMS" asChild>
-            <a href={smsLink}><MessageSquare className="mr-2 h-4 w-4" /> SMS</a>
-        </ToastAction>
-    )
-}
+    emailBody += "Pagarbiai,\nGedimų Registras";
+    
+    setNotificationContent({
+        fault,
+        subject,
+        emailBody,
+        smsBody,
+    });
+  };
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
@@ -231,14 +224,9 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
       const workerName = workers.find(w => w.id === workerId)?.name;
       toast({
         title: "Specialistas priskirtas",
-        description: "Paruošti pranešimai vartotojui.",
-        action: (
-          <div className="flex gap-2">
-            {createMailToAction(updatedFault, statusConfig.assigned.label, workerName)}
-            {createSmsAction(updatedFault, statusConfig.assigned.label, workerName)}
-          </div>
-        )
+        description: `Specialistas ${workerName} priskirtas gedimui ${faultId}.`,
       });
+      openNotificationEditor(updatedFault, statusConfig.assigned.label, workerName);
     }
     
     setIsUpdating(null);
@@ -260,15 +248,10 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
 
      if(updatedFault) {
         toast({
-            title: `Būsena pakeista į "${statusConfig[status].label}"`,
-            description: "Paruošti pranešimai vartotojui.",
-            action: (
-              <div className="flex gap-2">
-                 {createMailToAction(updatedFault, statusConfig[status].label)}
-                 {createSmsAction(updatedFault, statusConfig[status].label)}
-              </div>
-            )
+            title: `Būsena pakeista`,
+            description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}".`,
         });
+        openNotificationEditor(updatedFault, statusConfig[status].label);
      }
 
      setIsUpdating(null);
@@ -341,13 +324,8 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             toast({
                 title: "Aktas sėkmingai pasirašytas ir suformuotas!",
                 description: `Būsena pakeista į "Užbaigtas".`,
-                action: (
-                    <div className="flex gap-2">
-                        {createMailToAction(updatedFault, statusConfig.completed.label)}
-                        {createSmsAction(updatedFault, statusConfig.completed.label)}
-                    </div>
-                ),
             });
+            openNotificationEditor(updatedFault, statusConfig.completed.label);
         }
     } catch (error) {
         console.error("Error capturing act:", error);
@@ -453,7 +431,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             a.href = url;
             a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
             document.body.appendChild(a);
-            a.click();
+a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             toast({
@@ -513,9 +491,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
     return false;
   }).sort((a, b) => {
-    if (sortKey === 'updatedAt') {
-      const dateA = new Date(a.updatedAt).getTime();
-      const dateB = new Date(b.updatedAt).getTime();
+    if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
+      const dateA = new Date(a[sortKey]).getTime();
+      const dateB = new Date(b[sortKey]).getTime();
       return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     }
     
@@ -528,7 +506,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     } else if (sortKey === 'assignedTo') {
       valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
       valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
-    } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address') {
+    } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
       valA = a[sortKey];
       valB = b[sortKey];
     }
@@ -537,9 +515,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     if (valA === undefined || valB === undefined) return 0;
     
     if (sortDirection === 'asc') {
-      return valA.localeCompare(valB, undefined, { numeric: true });
+      return valA.localeCompare(valB, 'lt', { numeric: true });
     } else {
-      return valB.localeCompare(valA, undefined, { numeric: true });
+      return valB.localeCompare(valA, 'lt', { numeric: true });
     }
   });
 
@@ -636,19 +614,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         <Table>
           <TableHeader>
             <TableRow>
-              {view === 'admin' ? (
-                 <>
-                    <SortableHeader sortKey="id" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
-                    <SortableHeader sortKey="type" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Tipas</SortableHeader>
-                    <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
-                 </>
-              ) : (
-                <>
-                  <TableHead className="w-[100px]">ID</TableHead>
-                  <TableHead>Tipas</TableHead>
-                  <TableHead>Adresas</TableHead>
-                </>
-              )}
+              <SortableHeader sortKey="id" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
+              <SortableHeader sortKey="description" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Aprašymas</SortableHeader>
+              <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
               <SortableHeader sortKey="status" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Būsena</SortableHeader>
               <SortableHeader sortKey="assignedTo" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Priskirta</SortableHeader>
@@ -671,7 +639,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                 <TableCell>
                   <div className="flex items-center gap-2" title={fault.type}>
                       <FaultTypeIcon type={fault.type} className="h-4 w-4 text-muted-foreground" />
-                      <span className="hidden md:inline">{fault.description.substring(0, 30)}...</span>
+                      <span className="font-medium">{fault.description.substring(0, 40)}{fault.description.length > 40 ? '...' : ''}</span>
                   </div>
                 </TableCell>
                 <TableCell>{fault.address}</TableCell>
@@ -737,10 +705,10 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                                 <span>Darbuotojo parašas</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                                disabled={!fault.workerSignature || !!fault.customerSignature}
+                                disabled={!fault.workerSignature || !!fault.customerSignature || fault.status !== 'in-progress'}
                                 onClick={() => setFaultToSign({fault: fault, type: 'customer'})}
                             >
-                                <Edit className="mr-2 h-4 w-4" />
+                                <User className="mr-2 h-4 w-4" />
                                 <span>Užsakovo parašas</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadAct(fault)} disabled={!fault.actImageUrl}>
@@ -751,19 +719,36 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                       )}
                       <DropdownMenuSeparator />
                       {view === "admin" && (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
-                              <User className="mr-2 h-4 w-4" />
-                              <span>Priskirti specialistą</span>
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                {workers.map(worker => (
-                                    <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
-                                        {worker.name}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
+                          <>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
+                                <User className="mr-2 h-4 w-4" />
+                                <span>Priskirti specialistą</span>
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                  {workers.map(worker => (
+                                      <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
+                                          {worker.name}
+                                      </DropdownMenuItem>
+                                  ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger disabled={isUpdating === fault.id || fault.status === 'completed'}>
+                                  <Wrench className="mr-2 h-4 w-4" />
+                                  <span>Keisti būseną</span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  {(Object.keys(statusConfig) as Status[])
+                                    .filter(s => s !== fault.status && s !== 'completed')
+                                    .map(status => (
+                                      <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(fault.id, status)}>
+                                          {statusConfig[status].label}
+                                      </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -886,6 +871,65 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         </DialogContent>
       </Dialog>
 
+       <Dialog open={!!notificationContent} onOpenChange={(open) => !open && setNotificationContent(null)}>
+        <DialogContent className="sm:max-w-xl">
+           {notificationContent && (
+            <form onSubmit={(e) => e.preventDefault()}>
+                <DialogHeader>
+                    <DialogTitle>Pranešimo siuntimas</DialogTitle>
+                    <DialogDescription>
+                        Peržiūrėkite ir redaguokite pranešimo turinį prieš siunčiant.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="email-subject">El. laiško tema</Label>
+                        <Input 
+                            id="email-subject" 
+                            value={notificationContent.subject} 
+                            onChange={(e) => setNotificationContent(prev => prev ? {...prev, subject: e.target.value} : null)}
+                        />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="email-body">El. laiško turinys</Label>
+                        <Textarea 
+                            id="email-body" 
+                            value={notificationContent.emailBody}
+                            onChange={(e) => setNotificationContent(prev => prev ? {...prev, emailBody: e.target.value} : null)}
+                            className="h-32"
+                        />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="sms-body">SMS žinutės turinys</Label>
+                        <Textarea 
+                            id="sms-body" 
+                            value={notificationContent.smsBody} 
+                            onChange={(e) => setNotificationContent(prev => prev ? {...prev, smsBody: e.target.value} : null)}
+                            className="h-20"
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="outline">Atšaukti</Button>
+                    </DialogClose>
+                     <div className="flex gap-2">
+                        <Button asChild>
+                           <a href={`mailto:${notificationContent.fault.reporterEmail}?subject=${encodeURIComponent(notificationContent.subject)}&body=${encodeURIComponent(notificationContent.emailBody)}`} onClick={() => setNotificationContent(null)}>
+                            <Send className="mr-2 h-4 w-4" /> Siųsti el. laišką
+                           </a>
+                        </Button>
+                        <Button asChild>
+                            <a href={`sms:${notificationContent.fault.reporterPhone}?body=${encodeURIComponent(notificationContent.smsBody)}`} onClick={() => setNotificationContent(null)}>
+                                <MessageSquare className="mr-2 h-4 w-4" /> Siųsti SMS
+                            </a>
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </form>
+           )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
