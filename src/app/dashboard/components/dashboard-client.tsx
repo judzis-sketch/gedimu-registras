@@ -185,6 +185,28 @@ export function DashboardClient({
   const [isAddFaultDialogOpen, setIsAddFaultDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const [pageInput, setPageInput] = useState(String(currentPage));
+
+  const totalPages = Math.ceil((faults?.length || 0) / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setPageInput(String(currentPage));
+  }, [currentPage]);
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const pageNum = parseInt(pageInput, 10);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+    } else {
+      // Reset input to current page if invalid
+      setPageInput(String(currentPage));
+    }
+  };
 
   const openNotificationEditor = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
     const subject = `Jūsų gedimo pranešimo (ID: ${fault.customId}) būsena atnaujinta`;
@@ -531,8 +553,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     });
 }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
 
-  const totalPages = Math.ceil(displayedAndSortedFaults.length / ITEMS_PER_PAGE);
-
   const paginatedFaults = useMemo(() => {
     if (view === 'worker') return displayedAndSortedFaults;
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -733,7 +753,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           </TableBody>
         </Table>
         {view === 'admin' && totalPages > 1 && (
-            <div className="flex items-center justify-end space-x-2 py-4">
+             <div className="flex items-center justify-end space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">
                     Rodoma {paginatedFaults.length} iš {displayedAndSortedFaults.length} įrašų.
                 </div>
@@ -747,9 +767,21 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                         <ChevronLeft className="h-4 w-4" />
                         Ankstesnis
                     </Button>
-                    <span className="text-sm font-medium">
-                        {currentPage} / {totalPages}
-                    </span>
+                    <div className="flex items-center gap-1 text-sm">
+                        <span>Puslapis</span>
+                        <form onSubmit={handlePageInputSubmit}>
+                            <Input
+                                type="number"
+                                min="1"
+                                max={totalPages}
+                                value={pageInput}
+                                onChange={handlePageInputChange}
+                                onBlur={() => handlePageInputSubmit(new Event('submit') as any)}
+                                className="h-8 w-14 p-1 text-center"
+                            />
+                        </form>
+                        <span>iš {totalPages}</span>
+                    </div>
                     <Button
                         variant="outline"
                         size="sm"
