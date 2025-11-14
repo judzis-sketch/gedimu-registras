@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -49,6 +49,7 @@ import JSZip from "jszip";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
+import Link from "next/link";
 
 
 interface DashboardClientProps {
@@ -725,6 +726,11 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
                       <div className="flex items-center gap-3">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">{selectedFault.address}</span>
+                         <Button variant="outline" size="sm" asChild>
+                            <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedFault.address)}`} target="_blank">
+                                <Map className="mr-2 h-4 w-4" /> Rodyti žemėlapyje
+                            </Link>
+                         </Button>
                       </div>
                       <div className="flex items-center gap-3">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -791,7 +797,3 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     </>
   );
 }
-
-    
-
-    
