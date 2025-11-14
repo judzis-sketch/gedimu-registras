@@ -5,7 +5,7 @@
  * This ruleset enforces role-based access control for employee data and issue management. Employees can only manage issues assigned to them, while administrators have broader access. This prioritizes security and scalability by denormalizing employee roles onto issues, ensuring authorization independence.
  *
  * Data Structure:
- * - /issues/{issueId}: Stores issue reports. Includes a denormalized 'assignedToId' field to link issues to employees.
+ * - /issues/{issueId}: Stores issue reports. Includes a denormalized 'assignedTo' field to link issues to employees.
  * - /employees/{employeeId}: Stores employee information.
  *
  * Key Security Decisions:
@@ -14,7 +14,7 @@
  * - Prevents unauthorized access to employee data and ensures that issues are managed appropriately.
  *
  * Denormalization for Authorization:
- * The `Issue` document includes the `assignedToId` field. This enables rules to authorize access based solely on data present in the document, without requiring `get()` calls to the `Employee` document.
+ * The `Issue` document includes the `assignedTo` field. This enables rules to authorize access based solely on data present in the document, without requiring `get()` calls to the `Employee` document.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -25,7 +25,7 @@ service cloud.firestore {
      * @path /issues/{issueId}
      * @allow (get, list) Anyone can read issues.
      * @allow (create) Anyone can create an issue.
-     * @allow (update) Authenticated employee can update an issue assigned to them.
+     * @allow (update) Authenticated employee can update an issue assigned to them or an admin can update any issue.
      * @allow (delete) Authenticated employee can delete an issue assigned to them.
      * @principle Enforces role-based access control for issue management post-creation.
      */
@@ -33,8 +33,8 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       allow create: if true;
-      allow update: if isSignedIn() && resource.data.assignedToId == request.auth.uid;
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.assignedToId);
+      allow update: if isSignedIn() && (isAdmin() || request.auth.uid == resource.data.assignedTo);
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.assignedTo);
     }
 
     /**
