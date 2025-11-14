@@ -55,6 +55,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { AddFaultDialog } from "./add-fault-dialog";
+import { useUser } from "@/firebase";
 
 
 interface DashboardClientProps {
@@ -168,6 +169,7 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const { faults, updateFault, isLoading: faultsLoading } = useFaults();
   const { workers, isLoading: workersLoading } = useWorkers();
+  const { user } = useUser();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
@@ -503,7 +505,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           return valB.localeCompare(valA, 'lt', { numeric: true });
         }
       });
-  }, [faults, view, workerId, statusFilter, dateRange, sortKey, sortDirection, workers]);
+  }, [faults, view, workerId, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
