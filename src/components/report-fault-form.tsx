@@ -27,6 +27,8 @@ import { useState } from "react";
 import { useFaults } from "@/context/faults-context";
 import { FaultType, NewFaultData } from "@/lib/types";
 
+const forbiddenWords = ["keiksmas1", "keiksmas2", "netinkamaszodis"];
+
 const formSchema = z.object({
   reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
@@ -35,7 +37,13 @@ const formSchema = z.object({
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
     errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
   }),
-  description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." }),
+  description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." })
+  .refine((value) => {
+      const words = value.toLowerCase().split(/\s+/);
+      return !words.some(word => forbiddenWords.includes(word));
+  }, {
+      message: "Aprašyme yra netinkamų žodžių.",
+  }),
 });
 
 const faultTypeTranslations: Record<FaultType, string> = {
