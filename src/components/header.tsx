@@ -10,6 +10,11 @@ export function Header() {
           <Logo className="h-6 w-6 text-primary" />
           <span className="font-headline text-xl">Gedimų Registras</span>
         </Link>
+        <nav>
+            <Button asChild>
+                <Link href="/login">Prisijungti</Link>
+            </Button>
+        </nav>
       </div>
     </header>
   );
