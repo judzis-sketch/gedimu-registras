@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { NewWorkerData, Worker } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 
@@ -66,7 +66,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
     addWorker,
     updateWorker,
     deleteWorker,
-  }), [workers, isLoading]);
+  }), [workers, isLoading, addWorker, updateWorker, deleteWorker]);
 
   return (
     <WorkersContext.Provider value={contextValue}>
