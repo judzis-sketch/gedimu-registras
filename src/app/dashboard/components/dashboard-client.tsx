@@ -727,7 +727,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">{selectedFault.address}</span>
                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedFault.address)}`} target="_blank">
+                            <Link href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedFault.address)}`} target="_blank">
                                 <Map className="mr-2 h-4 w-4" /> Rodyti žemėlapyje
                             </Link>
                          </Button>
