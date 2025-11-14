@@ -10,7 +10,7 @@ export interface NewWorkerData {
 }
 
 export interface Worker extends Omit<NewWorkerData, 'password'> {
-  id: string; // This will be the Firebase Auth UID
+  docId: string; // This will be the Firebase document ID
 }
 
 export interface NewFaultData {

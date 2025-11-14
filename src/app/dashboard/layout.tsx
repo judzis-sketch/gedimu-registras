@@ -66,7 +66,7 @@ function DashboardLayoutContent({
     }
   };
   
-  const worker = workers?.find(w => w.id === user?.uid);
+  const worker = workers?.find(w => w.docId === user?.uid);
   
   const newFaultsCount = faults?.filter(f => f.status === 'new').length ?? 0;
   const workerTasksCount = faults?.filter(f => f.assignedTo === user?.uid && f.status !== 'completed').length ?? 0;

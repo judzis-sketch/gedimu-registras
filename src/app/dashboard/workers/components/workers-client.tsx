@@ -113,7 +113,7 @@ export function WorkersClient() {
         const { password, ...updateData } = workerData;
         const dataToSend: Partial<NewWorkerData> = updateData;
         if(password) dataToSend.password = password; // only include password if user entered a new one
-        updateWorker(editingWorker.id, dataToSend);
+        updateWorker(editingWorker.docId, dataToSend);
         toast({
           title: "Darbuotojas atnaujintas",
           description: `${data.name} duomenys buvo sėkmingai atnaujinti.`,
@@ -305,7 +305,7 @@ export function WorkersClient() {
                 </TableRow>
               )}
               {workers?.map((worker) => (
-                <TableRow key={worker.id}>
+                <TableRow key={worker.docId}>
                   <TableCell>{worker.name}</TableCell>
                   <TableCell>{worker.email}</TableCell>
                   <TableCell>
@@ -339,7 +339,7 @@ export function WorkersClient() {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                 <AlertDialogCancel>Atšaukti</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteClick(worker.id)}>
+                                <AlertDialogAction onClick={() => handleDeleteClick(worker.docId)}>
                                     Ištrinti
                                 </AlertDialogAction>
                                 </AlertDialogFooter>

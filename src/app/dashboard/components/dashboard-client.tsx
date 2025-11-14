@@ -225,7 +225,7 @@ export function DashboardClient({
     
     updateFault(faultId, updatedFaultData);
     
-    const workerName = workers?.find(w => w.id === workerId)?.name;
+    const workerName = workers?.find(w => w.docId === workerId)?.name;
     toast({
       title: "Specialistas priskirtas",
       description: `Specialistas ${workerName} priskirtas gedimui ${fault.customId}.`,
@@ -452,12 +452,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
   const getWorkerName = (workerId?: string) => {
     if (!workerId || !workers) return "Nepriskirta";
-    return workers.find((w) => w.id === workerId)?.name || "Nežinomas";
+    return workers.find((w) => w.docId === workerId)?.name || "Nežinomas";
   };
   
   const getAssignedWorker = (fault: Fault) => {
     if (!workers) return undefined;
-    return workers.find((w) => w.id === fault.assignedTo);
+    return workers.find((w) => w.docId === fault.assignedTo);
   }
   
   const handleSort = (key: SortKey) => {
@@ -758,7 +758,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                               </DropdownMenuSubTrigger>
                               <DropdownMenuSubContent>
                                   {workers.map(worker => (
-                                      <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.docId, worker.id)}>
+                                      <DropdownMenuItem key={worker.docId} onClick={() => handleAssignWorker(fault.docId, worker.docId)}>
                                           {worker.name}
                                       </DropdownMenuItem>
                                   ))}
