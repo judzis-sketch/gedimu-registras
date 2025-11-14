@@ -196,7 +196,7 @@ export function DashboardClient({
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
                         )}
-                         {view === "worker" && (
+                         {view === "worker" && fault.status !== 'completed' && (
                            <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                               <Clock className="mr-2 h-4 w-4" />
