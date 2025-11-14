@@ -580,7 +580,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               <TableHead className="w-[100px]">ID</TableHead>
               <TableHead>Tipas</TableHead>
               <TableHead>Adresas</TableHead>
-              {view === 'worker' && <TableHead>Reporteris</TableHead>}
+              {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
               <TableHead>Būsena</TableHead>
               <TableHead>Priskirta</TableHead>
               {view === 'worker' && <TableHead>Keisti būseną</TableHead>}
