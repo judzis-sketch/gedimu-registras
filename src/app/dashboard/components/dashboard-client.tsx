@@ -758,6 +758,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                                   ))}
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
+                            {fault.status !== 'completed' && (
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(fault.id, 'completed')}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    <span>Užbaigti darbą</span>
+                                </DropdownMenuItem>
+                            )}
                           </>
                       )}
                     </DropdownMenuContent>
