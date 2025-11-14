@@ -29,17 +29,28 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollectionRef = collection(firestore, 'issues');
     
-    // For the admin on the main dashboard, always show all faults.
     if (user.email === 'admin@zarasubustas.lt' && view !== 'worker') {
         return faultsCollectionRef;
     }
 
-    // For any worker (or admin viewing "My Tasks"), filter by their UID for non-completed tasks.
-    return query(faultsCollectionRef, where('assignedTo', '==', user.uid), where('status', '!=', 'completed'));
+    return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
   }, [firestore, user, view]);
 
 
-  const { data: faults, isLoading } = useCollection<Fault>(faultsQuery as Query<Fault>);
+  const { data: faultsFromHook, isLoading } = useCollection<Fault>(faultsQuery as Query<Fault>);
+
+  const faults = useMemo(() => {
+    if (!faultsFromHook) return null;
+    
+    // If it's a worker view (for worker or admin), filter out completed tasks on the client
+    if (view === 'worker' || (user && user.email !== 'admin@zarasubustas.lt')) {
+      return faultsFromHook.filter(fault => fault.status !== 'completed');
+    }
+    
+    // For admin on main dashboard, show all faults
+    return faultsFromHook;
+  }, [faultsFromHook, view, user]);
+
 
   const addFault = useCallback((faultData: NewFaultData) => {
     if (!firestore) {
@@ -49,18 +60,16 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollection = collection(firestore, 'issues');
     
-    // --- Custom ID Generation Logic ---
-    const existingIds = (faults || [])
+    const existingIds = (faultsFromHook || [])
         .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
         .filter(n => !isNaN(n));
     
     const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
     const newCustomId = `FAULT-${String(maxId + 1).padStart(4, '0')}`;
-    // --- End Custom ID Generation Logic ---
 
     const newFaultDocument = {
       ...faultData,
-      customId: newCustomId, // Assign the new sequential ID
+      customId: newCustomId, 
       assignedTo: '',
       status: 'new' as const,
       createdAt: serverTimestamp(),
@@ -76,7 +85,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error adding fault to Firestore:", permissionError);
       errorEmitter.emit('permission-error', permissionError);
     });
-  }, [firestore, faults]); 
+  }, [firestore, faultsFromHook]); 
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
@@ -86,7 +95,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue = useMemo(() => {
     return {
-        faults: faults || null,
+        faults: faults,
         isLoading,
         addFault,
         updateFault,
