@@ -32,7 +32,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle, ArrowUp, ArrowDown, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -54,6 +54,8 @@ import Link from "next/link";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { AddFaultDialog } from "./add-fault-dialog";
+
 
 interface DashboardClientProps {
   view: "admin" | "worker";
@@ -180,6 +182,7 @@ export function DashboardClient({
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
+  const [isAddFaultDialogOpen, setIsAddFaultDialogOpen] = useState(false);
 
   const openNotificationEditor = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
     const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
@@ -589,14 +592,19 @@ a.click();
           <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
         </TabsList>
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="font-headline">Visi gedimai</CardTitle>
+               <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Registruoti gedimą
+                </Button>
             </CardHeader>
             <CardContent>
               {renderTable()}
             </CardContent>
         </Card>
       </Tabs>
+      <AddFaultDialog isOpen={isAddFaultDialogOpen} onOpenChange={setIsAddFaultDialogOpen} />
     </div>
   );
 
@@ -921,9 +929,7 @@ a.click();
                     </div>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild>
-                        <Button type="button" variant="outline">Atšaukti</Button>
-                    </DialogClose>
+                    <Button type="button" variant="outline" onClick={() => setNotificationContent(null)}>Atšaukti</Button>
                      <div className="flex gap-2">
                         <Button asChild>
                            <a href={`mailto:${notificationContent.fault.reporterEmail}?subject=${encodeURIComponent(notificationContent.subject)}&body=${encodeURIComponent(notificationContent.emailBody)}`}>
