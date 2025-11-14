@@ -10,6 +10,7 @@ export interface Worker {
 export interface NewFaultData {
     reporterName: string;
     reporterEmail: string;
+    reporterPhone: string;
     address: string;
     type: FaultType;
     description: string;
