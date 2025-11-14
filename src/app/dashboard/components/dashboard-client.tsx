@@ -141,7 +141,7 @@ export function DashboardClient({
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
-  const [statusFilter, setStatusFilter] = useState<Status>("new");
+  const [statusFilter, setStatusFilter] = useState<Status | 'all'>("new");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const actTemplateRef = useRef<HTMLDivElement>(null);
@@ -364,12 +364,10 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     const tempActContainer = document.createElement('div');
 
     // Dynamically create a React root to render the component.
-    // This is a more robust way than using innerHTML with React components.
-    const ReactDOM = await import('react-dom');
+    const ReactDOMClient = await import('react-dom/client');
     
     // We need to use createRoot for React 18
-    // @ts-ignore
-    const root = ReactDOM.createRoot(tempActContainer);
+    const root = ReactDOMClient.createRoot(tempActContainer);
     root.render(
         <ActTemplate 
             fault={fault} 
@@ -390,7 +388,6 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     });
      
     document.body.removeChild(elementToCapture);
-    // @ts-ignore
     root.unmount();
 
 
