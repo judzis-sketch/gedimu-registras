@@ -30,10 +30,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
         <FirebaseClientProvider>
-            <ForbiddenWordsProvider>
-              {children}
-              <Toaster />
-            </ForbiddenWordsProvider>
+          <ForbiddenWordsProvider>
+            {children}
+            <Toaster />
+          </ForbiddenWordsProvider>
         </FirebaseClientProvider>
       </body>
     </html>
