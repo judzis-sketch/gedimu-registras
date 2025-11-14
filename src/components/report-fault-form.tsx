@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFaults } from "@/context/faults-context";
-import { FaultType, NewFaultData } from "@/lib/types";
+import { NewFaultData, FaultType } from "@/lib/types";
 
 const formSchema = z.object({
   reporterName: z.string().min(2, "Vardas turi būti bent 2 simbolių ilgio."),
