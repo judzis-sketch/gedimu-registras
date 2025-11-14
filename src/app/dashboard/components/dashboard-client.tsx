@@ -150,21 +150,6 @@ export function DashboardClient({
     to: new Date(),
   });
 
-
-  const statusChangeSubMenu = (fault: Fault) => (
-    <DropdownMenuSub>
-     <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
-       <Clock className="mr-2 h-4 w-4" />
-       <span>Keisti būseną</span>
-     </DropdownMenuSubTrigger>
-     <DropdownMenuSubContent>
-         <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
-             Vykdomas
-         </DropdownMenuItem>
-     </DropdownMenuSubContent>
-   </DropdownMenuSub>
- );
-
  const createMailToAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
   const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
   let body = `Laba diena, ${fault.reporterName},\n\nInformuojame, kad jūsų gedimo pranešimo (ID: ${fault.id}), adresu ${fault.address}, būsena buvo pakeista į "${newStatusLabel}".\n\n`;
@@ -286,14 +271,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     const currentFault = faults.find(f => f.id === faultId);
     if (!currentFault || !currentFault.workerSignature) return;
 
-    // Use a temporary container to render the component for capturing
     const tempActContainer = document.createElement('div');
     tempActContainer.style.position = 'absolute';
-    tempActContainer.style.left = '-9999px'; // Position off-screen
+    tempActContainer.style.left = '-9999px';
     tempActContainer.style.width = '800px';
     document.body.appendChild(tempActContainer);
 
-    // We need to use createRoot for React 18
     const ReactDOMClient = await import('react-dom/client');
     const root = ReactDOMClient.createRoot(tempActContainer);
 
@@ -306,13 +289,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         />
     );
 
-    // Allow time for images to load within the template
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
         const canvas = await html2canvas(tempActContainer, {
             scale: 2,
-            useCORS: true, // Important for external images if any
+            useCORS: true,
         });
         const actImageUrl = canvas.toDataURL('image/png');
 
@@ -353,7 +335,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             description: "Nepavyko sugeneruoti akto paveikslėlio."
         });
     } finally {
-        // Cleanup
         root.unmount();
         document.body.removeChild(tempActContainer);
         setFaultToSign(null);
@@ -600,6 +581,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               {view === 'worker' && <TableHead>Reporteris</TableHead>}
               <TableHead>Būsena</TableHead>
               <TableHead>Priskirta</TableHead>
+              {view === 'worker' && <TableHead>Keisti būseną</TableHead>}
               <TableHead>Atnaujinta</TableHead>
               <TableHead className="text-right">Veiksmai</TableHead>
             </TableRow>
@@ -607,7 +589,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           <TableBody>
             {displayedFaults.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={view === 'worker' ? 9 : 8} className="h-24 text-center">
                   {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
@@ -629,7 +611,31 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                   </Badge>
                 </TableCell>
                 <TableCell>{getWorkerName(fault.assignedTo)}</TableCell>
-                  <TableCell>
+                {view === 'worker' && (
+                    <TableCell>
+                        <div className="flex flex-col gap-2">
+                        {fault.status === 'assigned' && (
+                            <Button size="sm" onClick={() => handleUpdateStatus(fault.id, 'in-progress')} disabled={isUpdating === fault.id}>
+                                {isUpdating === fault.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wrench className="mr-2 h-4 w-4" />}
+                                Pradėti
+                            </Button>
+                        )}
+                        {fault.status === 'in-progress' && (
+                           <>
+                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'worker'})} disabled={!!fault.workerSignature || isUpdating === fault.id}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Darbuotojo parašas
+                                </Button>
+                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'customer'})} disabled={!fault.workerSignature || !!fault.customerSignature || isUpdating === fault.id}>
+                                     <User className="mr-2 h-4 w-4" />
+                                     Užsakovo parašas
+                                </Button>
+                           </>
+                        )}
+                        </div>
+                    </TableCell>
+                )}
+                <TableCell>
                   <FormattedDate date={fault.updatedAt} />
                 </TableCell>
                 <TableCell className="text-right">
@@ -650,29 +656,30 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                           <Info className="mr-2 h-4 w-4" />
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
-                       <DropdownMenuItem
-                        disabled={fault.status !== 'in-progress' || !!fault.workerSignature}
-                        onClick={() => setFaultToSign({fault: fault, type: 'worker'})}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        <span>Darbuotojo parašas</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={!fault.workerSignature || !!fault.customerSignature}
-                        onClick={() => setFaultToSign({fault: fault, type: 'customer'})}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        <span>Užsakovo parašas</span>
-                      </DropdownMenuItem>
                        {view === 'admin' && (
-                        <DropdownMenuItem onClick={() => handleDownloadAct(fault)} disabled={!fault.actImageUrl}>
-                          <Download className="mr-2 h-4 w-4" />
-                          <span>Atsisiųsti aktą</span>
-                        </DropdownMenuItem>
+                         <>
+                            <DropdownMenuItem
+                                disabled={fault.status !== 'in-progress' || !!fault.workerSignature}
+                                onClick={() => setFaultToSign({fault: fault, type: 'worker'})}
+                            >
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Darbuotojo parašas</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                disabled={!fault.workerSignature || !!fault.customerSignature}
+                                onClick={() => setFaultToSign({fault: fault, type: 'customer'})}
+                            >
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Užsakovo parašas</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadAct(fault)} disabled={!fault.actImageUrl}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Atsisiųsti aktą</span>
+                            </DropdownMenuItem>
+                         </>
                       )}
                       <DropdownMenuSeparator />
                       {view === "admin" && (
-                        <>
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
                               <User className="mr-2 h-4 w-4" />
@@ -686,10 +693,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                                 ))}
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
-                          {fault.status !== 'completed' && fault.status !== 'new' && statusChangeSubMenu(fault)}
-                        </>
                       )}
-                        {view === "worker" && fault.status !== 'completed' && statusChangeSubMenu(fault)}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
