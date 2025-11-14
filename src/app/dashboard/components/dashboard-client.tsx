@@ -82,54 +82,70 @@ export function DashboardClient({
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
 
+  const statusChangeSubMenu = (fault: Fault) => (
+    <DropdownMenuSub>
+     <DropdownMenuSubTrigger>
+       <Clock className="mr-2 h-4 w-4" />
+       <span>Keisti būseną</span>
+     </DropdownMenuSubTrigger>
+     <DropdownMenuSubContent>
+         <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
+             Vykdomas
+         </DropdownMenuItem>
+         <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
+             Užbaigtas
+         </DropdownMenuItem>
+     </DropdownMenuSubContent>
+   </DropdownMenuSub>
+ );
+
   const handleAssignWorker = (faultId: string, workerId: string) => {
+    let faultToUpdate: Fault | undefined;
+
     setFaults((prevFaults) =>
-      prevFaults.map((fault) =>
-        fault.id === faultId
-          ? { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() }
-          : fault
-      )
+      prevFaults.map((fault) => {
+        if (fault.id === faultId) {
+          faultToUpdate = { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
+          return faultToUpdate;
+        }
+        return fault;
+      })
     );
-    const workerName = initialWorkers.find(w => w.id === workerId)?.name;
-    toast({
-      title: "Specialistas priskirtas",
-      description: `Gedimas ${faultId} priskirtas ${workerName}.`,
-    });
+
+    if (faultToUpdate) {
+        const workerName = initialWorkers.find(w => w.id === workerId)?.name;
+        toast({
+          title: "Specialistas priskirtas",
+          description: `Gedimas ${faultId} priskirtas ${workerName}. Vartotojas ${faultToUpdate.reporterEmail} informuotas.`,
+        });
+    }
   };
 
   const handleUpdateStatus = (faultId: string, status: Status) => {
+    let faultToUpdate: Fault | undefined;
+
     setFaults((prevFaults) =>
-      prevFaults.map((fault) =>
-        fault.id === faultId ? { ...fault, status: status, updatedAt: new Date() } : fault
-      )
+      prevFaults.map((fault) => {
+        if (fault.id === faultId) {
+            faultToUpdate = { ...fault, status: status, updatedAt: new Date() };
+            return faultToUpdate;
+        }
+        return fault;
+      })
     );
+
+    if (faultToUpdate) {
      toast({
       title: "Būsena atnaujinta",
-      description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}".`,
+      description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}". Vartotojas ${faultToUpdate.reporterEmail} informuotas.`,
     });
+    }
   };
 
   const getWorkerName = (workerId?: string) => {
     if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
     return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
-  
-  const statusChangeSubMenu = (fault: Fault) => (
-     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <Clock className="mr-2 h-4 w-4" />
-        <span>Keisti būseną</span>
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-          <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
-              Vykdomas
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
-              Užbaigtas
-          </DropdownMenuItem>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
 
   const displayedFaults = view === 'admin'
     ? faults.filter(fault => statusFilter === 'all' || fault.status === statusFilter)
