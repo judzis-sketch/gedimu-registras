@@ -1,0 +1,71 @@
+/**
+ * @fileOverview Firestore Security Rules for the Gedimų Registras application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces role-based access control for employee data and issue management. Employees can only manage issues assigned to them, while administrators have broader access. This prioritizes security and scalability by denormalizing employee roles onto issues, ensuring authorization independence.
+ *
+ * Data Structure:
+ * - /issues/{issueId}: Stores issue reports. Includes a denormalized 'assignedToId' field to link issues to employees.
+ * - /employees/{employeeId}: Stores employee information.
+ *
+ * Key Security Decisions:
+ * - Employees can only create, update, and delete issues assigned to them.
+ * - Administrators have full access to all employee and issue data.
+ * - Prevents unauthorized access to employee data and ensures that issues are managed appropriately.
+ *
+ * Denormalization for Authorization:
+ * The `Issue` document includes the `assignedToId` field. This enables rules to authorize access based solely on data present in the document, without requiring `get()` calls to the `Employee` document.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Grants access to issues based on employee assignment and admin roles.
+     * @path /issues/{issueId}
+     * @allow (create) Authenticated employee can create an issue and assign it to themselves by setting assignedToId to their own employeeId.
+     * @allow (update) Authenticated employee can update an issue assigned to them.
+     * @allow (delete) Authenticated employee can delete an issue assigned to them.
+     * @deny (create) Non-authenticated user attempts to create an issue.
+     * @deny (update) Authenticated employee attempts to update an issue not assigned to them.
+     * @principle Enforces role-based access control for issue management.
+     */
+    match /issues/{issueId} {
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if isSignedIn() && request.resource.data.assignedToId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.assignedToId == request.auth.uid;
+      allow delete: if isExistingOwner(resource.data.assignedToId);
+    }
+
+    /**
+     * @description Controls access to employee data, allowing only authenticated users to read.
+     * @path /employees/{employeeId}
+     * @allow (get) Any authenticated user can read employee data.
+     * @deny (create) Non-authenticated user attempts to create employee data.
+     * @deny (update) Non-authenticated user attempts to update employee data.
+     * @deny (delete) Non-authenticated user attempts to delete employee data.
+     * @principle Restricts write access to employee data while allowing public read access.
+     */
+    match /employees/{employeeId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+        return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+  }
+}

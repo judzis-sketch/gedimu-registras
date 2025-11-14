@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "Issue": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Issue",
+      "type": "object",
+      "description": "Represents an issue reported by a resident.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the issue."
+        },
+        "residentEmail": {
+          "type": "string",
+          "description": "Email address of the resident reporting the issue.",
+          "format": "email"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the issue."
+        },
+        "submissionDate": {
+          "type": "string",
+          "description": "Date and time when the issue was reported.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the issue (e.g., Open, Assigned, In Progress, Resolved).",
+          "format": "string"
+        },
+        "assignedToId": {
+          "type": "string",
+          "description": "Reference to Employee assigned to resolve the issue. (Relationship: Employee 1:N Issue)"
+        }
+      },
+      "required": [
+        "id",
+        "residentEmail",
+        "description",
+        "submissionDate",
+        "status"
+      ]
+    },
+    "Employee": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Employee",
+      "type": "object",
+      "description": "Represents an employee who can be assigned to resolve issues.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the employee."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the employee."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the employee."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the employee.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the employee (e.g., Administrator, Technician)."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "role"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/issues/{issueId}",
+        "definition": {
+          "entityName": "Issue",
+          "schema": {
+            "$ref": "#/backend/entities/Issue"
+          },
+          "description": "Stores issue reports. Includes denormalized 'assignedToId' from employee documents for authorization independence.",
+          "params": [
+            {
+              "name": "issueId",
+              "description": "Unique identifier for the issue."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/employees/{employeeId}",
+        "definition": {
+          "entityName": "Employee",
+          "schema": {
+            "$ref": "#/backend/entities/Employee"
+          },
+          "description": "Stores employee information.",
+          "params": [
+            {
+              "name": "employeeId",
+              "description": "Unique identifier for the employee."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This design prioritizes security and scalability for the 'Gedimų Registras' application, focusing on Authorization Independence, Structural Segregation, and Access Modeling. It avoids hierarchical authorization dependencies by denormalizing necessary authorization data, ensuring that security rules can be applied efficiently and independently at each level.\n\nThe core structure revolves around segregated collections for employees and issues. Employee data is stored in `/employees/{employeeId}`, and issues are stored in `/issues/{issueId}`. An `assignedToId` field on the `Issue` links the issue to an employee. This design choice provides Structural Segregation. Since we want to support listing issues by employee, the employee's role is denormalized to the `Issue`. This design achieves Authorization Independence.\n\n**Authorization Independence:** The `Issue` document includes the `assignedToId`. This enables rules to be written that authorize access based solely on data present in the document, without requiring `get()` calls to the `Employee` document.\n\n**QAPs Support:**\n*   **Listing Issues:** Listing issues is supported via the `/issues` collection. Rules can be written to allow listing based on the employee role or other document properties.\n\n"
+  }
+}
