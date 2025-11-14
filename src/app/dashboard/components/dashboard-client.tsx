@@ -235,11 +235,10 @@ export function DashboardClient({
   const handleDownloadAct = async (fault: Fault) => {
     if (!fault.signature) return;
 
-    // Create a temporary, hidden div to render the act HTML for capturing
     const container = document.createElement('div');
     container.style.position = 'fixed';
     container.style.left = '-9999px';
-    container.style.width = '800px'; // A4-like width
+    container.style.width = '800px';
     container.style.padding = '20px';
     container.style.backgroundColor = 'white';
     container.style.color = 'black';
@@ -248,19 +247,38 @@ export function DashboardClient({
 
     try {
         const canvas = await html2canvas(container, {
-            scale: 2, // Higher scale for better quality
+            scale: 2,
             useCORS: true,
         });
 
         const imgData = canvas.toDataURL('image/png');
-        
         const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'px',
-            format: [canvas.width, canvas.height]
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
         });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const canvasAspectRatio = canvasWidth / canvasHeight;
+        const pdfAspectRatio = pdfWidth / pdfHeight;
 
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        let finalWidth, finalHeight;
+
+        if (canvasAspectRatio > pdfAspectRatio) {
+            finalWidth = pdfWidth;
+            finalHeight = pdfWidth / canvasAspectRatio;
+        } else {
+            finalHeight = pdfHeight;
+            finalWidth = pdfHeight * canvasAspectRatio;
+        }
+        
+        const x = (pdfWidth - finalWidth) / 2;
+        const y = (pdfHeight - finalHeight) / 2;
+
+        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
         pdf.save(`atliktu-darbu-aktas-${fault.id}.pdf`);
 
     } catch (error) {
@@ -271,7 +289,6 @@ export function DashboardClient({
             description: "Nepavyko sugeneruoti PDF failo."
         });
     } finally {
-        // Clean up the temporary div
         document.body.removeChild(container);
     }
 };
