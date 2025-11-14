@@ -192,28 +192,55 @@ export function DashboardClient({
      setIsUpdating(null);
   };
   
-  const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
-    const currentFault = faults.find(f => f.id === faultId);
-    if (!actTemplateRef.current || !currentFault) return;
-
-    // Temporarily append the signature image to get the full HTML
-    const signatureImg = document.createElement('img');
-    signatureImg.src = signatureDataUrl;
-    signatureImg.width = 200;
-    signatureImg.height = 100;
-    signatureImg.alt = "Kliento parašas";
-    signatureImg.style.marginTop = '0.5rem';
-
-    const placeholder = actTemplateRef.current.querySelector('[data-signature-placeholder]');
-    placeholder?.appendChild(signatureImg);
-
-    const actHtml = actTemplateRef.current.innerHTML;
-
-    // Clean up the appended image
-    if (placeholder) {
-      placeholder.innerHTML = '';
+  const getActHtml = (fault: Fault, signatureDataUrl?: string) => {
+    const assignedWorkerName = getAssignedWorker(fault)?.name || 'Nenurodytas';
+    let signatureHtml = '<p class="mt-8 border-b border-foreground/50"></p>';
+    if (signatureDataUrl) {
+      signatureHtml = `<img src="${signatureDataUrl}" width="200" height="100" alt="Kliento parašas" style="margin-top: 0.5rem;" />`
     }
 
+    return `
+      <div class="space-y-4 text-sm" style="font-family: sans-serif; color: black;">
+        <p class="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
+        <h3 class="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
+        <div class="flex justify-between">
+            <span>${fault.address}</span>
+            <span>${format(new Date(), 'yyyy-MM-dd')}</span>
+        </div>
+        <p>
+            Šis aktas patvirtina, kad specialistas <span class="font-semibold">${assignedWorkerName}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
+        </p>
+        <div class="p-2 border rounded-md bg-muted/50">
+            <p class="font-semibold">Registruotas gedimas:</p>
+            <p>${fault.description}</p>
+        </div>
+        <p>
+           Užsakovas <span class="font-semibold">${fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
+        </p>
+        <div class="grid grid-cols-2 gap-8 pt-6" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; padding-top: 1.5rem;">
+            <div>
+                <p class="font-semibold">Vykdytojas:</p>
+                <p class="mt-2 font-medium">${assignedWorkerName}</p>
+                <p class="mt-8 border-b border-foreground/50" style="margin-top: 2rem; border-bottom-width: 1px;"></p>
+                <p class="text-xs text-center">(parašas, vardas, pavardė)</p>
+            </div>
+            <div>
+                 <p class="font-semibold">Užsakovas:</p>
+                 <p class="mt-2 font-medium">${fault.reporterName}</p>
+                 ${signatureHtml}
+                 <p class="text-xs text-center">(parašas, vardas, pavardė)</p>
+            </div>
+        </div>
+      </div>
+    `;
+  };
+  
+  const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
+    const currentFault = faults.find(f => f.id === faultId);
+    if (!currentFault) return;
+
+    const actHtml = getActHtml(currentFault, signatureDataUrl);
+    
     let updatedFault: Fault | undefined;
     setFaults(prevFaults =>
       prevFaults.map(f => {
@@ -242,7 +269,7 @@ export function DashboardClient({
   };
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
-    if (!fault.signature) return null;
+    const actHtml = fault.signature || getActHtml(fault);
 
     const container = document.createElement('div');
     container.style.position = 'fixed';
@@ -251,7 +278,7 @@ export function DashboardClient({
     container.style.padding = '20px';
     container.style.backgroundColor = 'white';
     container.style.color = 'black';
-    container.innerHTML = fault.signature;
+    container.innerHTML = actHtml;
     document.body.appendChild(container);
 
     try {
@@ -321,9 +348,9 @@ export function DashboardClient({
     });
 
     const zip = new JSZip();
-    const signedFaultsToDownload = displayedFaults.filter(f => f.signature);
+    const faultsToDownload = displayedFaults.filter(f => f.status === 'completed');
 
-    for (const fault of signedFaultsToDownload) {
+    for (const fault of faultsToDownload) {
         const blob = await generatePdfBlob(fault);
         if (blob) {
             zip.file(`atliktu-darbu-aktas-${fault.id}.pdf`, blob);
@@ -383,7 +410,7 @@ export function DashboardClient({
     return false;
   });
 
-  const signedFaultsCount = displayedFaults.filter(f => f.signature).length;
+  const downloadableActsCount = displayedFaults.filter(f => f.status === 'completed').length;
 
   const adminView = (
     <div className="space-y-4">
@@ -396,14 +423,14 @@ export function DashboardClient({
           {dateRange && <Button variant="outline" onClick={() => setDateRange(undefined)}>Išvalyti</Button>}
            <Button
                 onClick={handleDownloadAllActs}
-                disabled={isDownloadingAll || signedFaultsCount === 0}
+                disabled={isDownloadingAll || downloadableActsCount === 0}
             >
                 {isDownloadingAll ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                     <Archive className="mr-2 h-4 w-4" />
                 )}
-                Atsisiųsti visus aktus ({signedFaultsCount})
+                Atsisiųsti visus aktus ({downloadableActsCount})
             </Button>
         </CardContent>
       </Card>
@@ -618,39 +645,10 @@ export function DashboardClient({
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-6 text-sm">
-                <div ref={actTemplateRef} className="space-y-4">
-                    <p className="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
-                    <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {faultToSign.id}</h3>
-                    <div className="flex justify-between">
-                        <span>{faultToSign.address}</span>
-                        <span>{format(new Date(), 'yyyy-MM-dd')}</span>
-                    </div>
-                    <p>
-                        Šis aktas patvirtina, kad specialistas <span className="font-semibold">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
-                    </p>
-                    <div className="p-2 border rounded-md bg-muted/50">
-                        <p className="font-semibold">Registruotas gedimas:</p>
-                        <p>{faultToSign.description}</p>
-                    </div>
-                    <p>
-                       Užsakovas <span className="font-semibold">{faultToSign.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
-                    </p>
-                    <div className="grid grid-cols-2 gap-8 pt-6">
-                        <div>
-                            <p className="font-semibold">Vykdytojas:</p>
-                            <p className="mt-2 font-medium">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</p>
-                            <p className="mt-8 border-b border-foreground/50"></p>
-                            <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
-                        </div>
-                        <div>
-                             <p className="font-semibold">Užsakovas:</p>
-                             <p className="mt-2 font-medium">{faultToSign.reporterName}</p>
-                             <div data-signature-placeholder></div>
-                             <p className="mt-8 border-b border-foreground/50"></p>
-                             <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
-                        </div>
-                    </div>
+                <div ref={actTemplateRef}>
+                  {/* This div is now only for potential reference, act is built in a function */}
                 </div>
+                <div dangerouslySetInnerHTML={{ __html: getActHtml(faultToSign) }} />
                 <div>
                   <p className="text-center font-medium mb-2">Užsakovo parašas:</p>
                   <SignaturePad onSave={(signature) => handleSaveSignature(faultToSign.id, signature)} />
