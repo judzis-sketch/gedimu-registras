@@ -285,42 +285,40 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     });
   };
 
-  const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: string) => {
+const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: string) => {
     const currentFault = faults.find(f => f.id === faultId);
     if (!currentFault || !currentFault.workerSignature) return;
 
-    if (actTemplateRef.current) {
-        // Temporarily render the full component to capture it
-        const tempRenderDiv = document.createElement('div');
-        tempRenderDiv.style.position = 'absolute';
-        tempRenderDiv.style.left = '-9999px';
-        tempRenderDiv.style.width = '800px';
+    // Use a temporary container to render the component for capturing
+    const tempActContainer = document.createElement('div');
+    tempActContainer.style.position = 'absolute';
+    tempActContainer.style.left = '-9999px'; // Position off-screen
+    tempActContainer.style.width = '800px';
+    document.body.appendChild(tempActContainer);
 
-        const ReactDOMClient = await import('react-dom/client');
-        const root = ReactDOMClient.createRoot(tempRenderDiv);
-        
-        document.body.appendChild(tempRenderDiv);
+    // We need to use createRoot for React 18
+    // @ts-ignore
+    const ReactDOMClient = await import('react-dom/client');
+    const root = ReactDOMClient.createRoot(tempActContainer);
 
-        root.render(
-            <ActTemplate 
-                fault={currentFault} 
-                assignedWorker={getAssignedWorker(currentFault)}
-                workerSignatureDataUrl={currentFault.workerSignature}
-                customerSignatureDataUrl={signatureDataUrl}
-            />
-        );
+    root.render(
+        <ActTemplate
+            fault={currentFault}
+            assignedWorker={getAssignedWorker(currentFault)}
+            workerSignatureDataUrl={currentFault.workerSignature}
+            customerSignatureDataUrl={signatureDataUrl}
+        />
+    );
 
-        await new Promise(resolve => setTimeout(resolve, 500)); // wait for images
+    // Allow time for images to load within the template
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-        const canvas = await html2canvas(tempRenderDiv, {
+    try {
+        const canvas = await html2canvas(tempActContainer, {
             scale: 2,
-            useCORS: true,
+            useCORS: true, // Important for external images if any
         });
-        
-        document.body.removeChild(tempRenderDiv);
-        root.unmount();
-        
-        const actImageUrl = canvas.toDataURL("image/png");
+        const actImageUrl = canvas.toDataURL('image/png');
 
         let updatedFault: Fault | undefined;
         setFaults(prevFaults =>
@@ -339,7 +337,6 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
             })
         );
         
-        setFaultToSign(null);
         if (updatedFault) {
             toast({
                 title: "Aktas sėkmingai pasirašytas ir suformuotas!",
@@ -352,8 +349,20 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
                 ),
             });
         }
+    } catch (error) {
+        console.error("Error capturing act:", error);
+        toast({
+            variant: "destructive",
+            title: "Klaida",
+            description: "Nepavyko sugeneruoti akto paveikslėlio."
+        });
+    } finally {
+        // Cleanup
+        root.unmount();
+        document.body.removeChild(tempActContainer);
+        setFaultToSign(null);
     }
-  };
+};
 
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
