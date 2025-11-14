@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
-import { FaultsProvider } from "@/context/faults-context";
-import { WorkersProvider } from "@/context/workers-context";
 import { ForbiddenWordsProvider } from "@/context/forbidden-words-context";
 import "./globals.css";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
@@ -33,11 +31,7 @@ export default function RootLayout({
       <body className="font-body antialiased min-h-screen flex flex-col">
         <FirebaseClientProvider>
           <ForbiddenWordsProvider>
-            <WorkersProvider>
-              <FaultsProvider>
-                {children}
-              </FaultsProvider>
-            </WorkersProvider>
+            {children}
             <Toaster />
           </ForbiddenWordsProvider>
         </FirebaseClientProvider>

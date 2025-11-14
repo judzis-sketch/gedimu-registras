@@ -187,8 +187,76 @@ export function DashboardClient({
   const ITEMS_PER_PAGE = 10;
   const [pageInput, setPageInput] = useState(String(currentPage));
 
-  const totalPages = Math.ceil((faults?.length || 0) / ITEMS_PER_PAGE);
+  const filteredFaults = useMemo(() => {
+    if (!faults) return [];
+    
+    if (view === 'admin') {
+      return faults.filter(fault => {
+            const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
+            const faultDate = fault.createdAt?.toDate ? fault.createdAt.toDate() : null;
+            if (!faultDate) return statusMatch;
 
+            const dateMatch = dateRange?.from && dateRange.to 
+                ? faultDate >= dateRange.from && faultDate <= dateRange.to
+                : true;
+
+            return statusMatch && dateMatch;
+        });
+    }
+
+    return faults; // Worker faults are pre-filtered in context
+}, [faults, view, statusFilter, dateRange]);
+
+
+  const sortedFaults = useMemo(() => {
+    if (!filteredFaults) return [];
+
+    return [...filteredFaults].sort((a, b) => {
+        let valA: string | number | Date | undefined;
+        let valB: string | number | Date | undefined;
+
+        switch (sortKey) {
+            case 'createdAt':
+            case 'updatedAt':
+                valA = a[sortKey]?.toDate ? a[sortKey].toDate() : new Date(0);
+                valB = b[sortKey]?.toDate ? b[sortKey].toDate() : new Date(0);
+                if (valA && valB) {
+                    return sortDirection === 'asc' ? valA.getTime() - valB.getTime() : valB.getTime() - valA.getTime();
+                }
+                return 0;
+            case 'customId':
+                const numA = parseInt(a.customId.replace('FAULT-', ''), 10);
+                const numB = parseInt(b.customId.replace('FAULT-', ''), 10);
+                return sortDirection === 'asc' ? numA - numB : numB - numA;
+            case 'assignedTo':
+                valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z'; // 'Z' to sort unassigned last
+                valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
+                break;
+            case 'status':
+                valA = statusConfig[a.status].label;
+                valB = statusConfig[b.status].label;
+                break;
+            default: // for description, type, address
+                valA = a[sortKey];
+                valB = b[sortKey];
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return sortDirection === 'asc' ? valA.localeCompare(valB, 'lt') : valB.localeCompare(valA, 'lt');
+        }
+        
+        return 0;
+    });
+}, [filteredFaults, sortKey, sortDirection, workers]);
+
+  const totalPages = Math.ceil((sortedFaults?.length || 0) / ITEMS_PER_PAGE);
+
+  const paginatedFaults = useMemo(() => {
+    if (view === 'worker') return sortedFaults;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedFaults.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedFaults, currentPage, ITEMS_PER_PAGE, view]);
+  
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
@@ -203,7 +271,6 @@ export function DashboardClient({
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
       setCurrentPage(pageNum);
     } else {
-      // Reset input to current page if invalid
       setPageInput(String(currentPage));
     }
   };
@@ -422,7 +489,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   };
 
   const handleDownloadAllActs = async () => {
-    if (!displayedAndSortedFaults) return;
+    if (!sortedFaults) return;
     setIsDownloadingAll(true);
     toast({
         title: "Pradedamas aktų archyvavimas...",
@@ -430,7 +497,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     });
 
     const zip = new JSZip();
-    const faultsToDownload = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl);
+    const faultsToDownload = sortedFaults.filter(f => f.status === 'completed' && f.actImageUrl);
 
     for (const fault of faultsToDownload) {
         const blob = await generatePdfBlob(fault);
@@ -493,74 +560,8 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     }
     setCurrentPage(1); // Reset to first page on sort
   };
-
-  const displayedAndSortedFaults = useMemo(() => {
-    if (!faults) return [];
-    
-    let filteredFaults = view === 'worker' 
-        ? faults.filter(fault => fault.assignedTo === user?.uid)
-        : faults;
-
-    if (view === 'admin') {
-      filteredFaults = filteredFaults.filter(fault => {
-            const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-            const faultDate = fault.createdAt?.toDate ? fault.createdAt.toDate() : null;
-            if (!faultDate) return statusMatch;
-
-            const dateMatch = dateRange?.from && dateRange.to 
-                ? faultDate >= dateRange.from && faultDate <= dateRange.to
-                : true;
-
-            return statusMatch && dateMatch;
-        });
-    }
-
-    return [...filteredFaults].sort((a, b) => {
-        let valA: string | number | Date | undefined;
-        let valB: string | number | Date | undefined;
-
-        switch (sortKey) {
-            case 'createdAt':
-            case 'updatedAt':
-                valA = a[sortKey]?.toDate ? a[sortKey].toDate() : new Date(0);
-                valB = b[sortKey]?.toDate ? b[sortKey].toDate() : new Date(0);
-                if (valA && valB) {
-                    return sortDirection === 'asc' ? valA.getTime() - valB.getTime() : valB.getTime() - valA.getTime();
-                }
-                return 0;
-            case 'customId':
-                const numA = parseInt(a.customId.replace('FAULT-', ''), 10);
-                const numB = parseInt(b.customId.replace('FAULT-', ''), 10);
-                return sortDirection === 'asc' ? numA - numB : numB - numA;
-            case 'assignedTo':
-                valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z'; // 'Z' to sort unassigned last
-                valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
-                break;
-            case 'status':
-                valA = statusConfig[a.status].label;
-                valB = statusConfig[b.status].label;
-                break;
-            default: // for description, type, address
-                valA = a[sortKey];
-                valB = b[sortKey];
-        }
-
-        if (typeof valA === 'string' && typeof valB === 'string') {
-            return sortDirection === 'asc' ? valA.localeCompare(valB, 'lt') : valB.localeCompare(valA, 'lt');
-        }
-        
-        return 0;
-    });
-}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
-
-  const paginatedFaults = useMemo(() => {
-    if (view === 'worker') return displayedAndSortedFaults;
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return displayedAndSortedFaults.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [displayedAndSortedFaults, currentPage, ITEMS_PER_PAGE, view]);
-
-
-  const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
+  
+  const downloadableActsCount = sortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
   const statusCounts = useMemo(() => {
     const allFaults = faults || [];
@@ -574,7 +575,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, dateRange]);
+  }, [statusFilter, dateRange, sortKey, sortDirection]);
 
 
   if (faultsLoading || (workersLoading && view === 'admin')) {
@@ -586,7 +587,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   }
   
   function renderTable() {
-    const faultsToRender = view === 'admin' ? paginatedFaults : displayedAndSortedFaults;
+    const faultsToRender = view === 'admin' ? paginatedFaults : sortedFaults;
     return (
         <>
         <Table>
@@ -755,7 +756,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         {view === 'admin' && totalPages > 1 && (
              <div className="flex items-center justify-end space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">
-                    Rodoma {paginatedFaults.length} iš {displayedAndSortedFaults.length} įrašų.
+                    Rodoma {paginatedFaults.length} iš {sortedFaults.length} įrašų.
                 </div>
                 <div className="flex items-center space-x-2">
                     <Button

@@ -34,7 +34,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
         return faultsCollectionRef;
     }
 
-    // Worker (or admin in 'my-tasks' view) should see only their assigned, non-completed tasks
+    // Worker (or admin in 'my-tasks' view) should see only their assigned tasks
     return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
   }, [firestore, user, view]);
 
@@ -44,10 +44,12 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const faults = useMemo(() => {
     if (!faultsFromHook) return null;
 
+    // For worker view, filter out completed tasks on the client-side
     if (user?.email !== 'admin@zarasubustas.lt' || view === 'worker') {
        return faultsFromHook.filter(fault => fault.status !== 'completed');
     }
     
+    // Admin view sees all faults fetched from the query
     return faultsFromHook;
   }, [faultsFromHook, user, view]);
 
@@ -60,7 +62,10 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
 
     const faultsCollection = collection(firestore, 'issues');
     
-    const existingIds = (faultsFromHook || [])
+    // Get all faults from the hook data to calculate the next ID
+    const allFaults = faultsFromHook || [];
+    
+    const existingIds = allFaults
         .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
         .filter(n => !isNaN(n));
     

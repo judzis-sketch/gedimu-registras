@@ -27,10 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth, useUser, useMessaging } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { FaultsProvider } from "@/context/faults-context";
-import { WorkersProvider } from "@/context/workers-context";
 import { getToken } from "firebase/messaging";
-import { firebaseConfig } from "@/firebase/config";
+import { WorkersProvider } from "@/context/workers-context";
+import { FaultsProvider } from "@/context/faults-context";
+
 
 function DashboardLayoutContent({
   children,
@@ -50,6 +50,7 @@ function DashboardLayoutContent({
   const messaging = useMessaging();
 
   const requestNotificationPermission = useCallback(async () => {
+    if (!messaging) return;
     const messagingInstance = await messaging;
     if (!messagingInstance || !user) return;
     
@@ -60,7 +61,8 @@ function DashboardLayoutContent({
       if (permission === 'granted') {
         console.log('Notification permission granted.');
         
-        const currentToken = await getToken(messagingInstance, { vapidKey: 'YOUR_VAPID_KEY' }); // You need to generate this in Firebase Console
+        // IMPORTANT: Replace 'YOUR_VAPID_KEY' with your actual VAPID key from Firebase console > Project Settings > Cloud Messaging > Web Push certificates
+        const currentToken = await getToken(messagingInstance, { vapidKey: 'BG0v7Kz9F3nOtBvS83iA9QvjA5rV_wK-8J4G7dJ3a8v6H3p1Q9Q_cZ-y8C8dGz5k5F3eY2w1zXz9I4k' }); 
         
         if (currentToken) {
           console.log('FCM Token:', currentToken);
@@ -96,9 +98,11 @@ function DashboardLayoutContent({
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      toast({ title: "Sėkmingai atsijungėte." });
-      router.push("/login");
+      if (auth) {
+        await signOut(auth);
+        toast({ title: "Sėkmingai atsijungėte." });
+        router.push("/login");
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -271,5 +275,5 @@ export default function DashboardLayout({
         <DashboardLayoutContent>{children}</DashboardLayoutContent>
       </FaultsProvider>
     </WorkersProvider>
-  )
+  );
 }

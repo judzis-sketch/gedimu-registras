@@ -67,7 +67,7 @@ Dabar įdėsime pačios funkcijos kodą.
 
         // Tikriname, ar gedimas buvo priskirtas darbuotojui (t.y. assignedTo laukas
         // buvo tuščias, o dabar turi reikšmę).
-        if (beforeData.assignedTo === "" && afterData.assignedTo !== "") {
+        if (!beforeData.assignedTo && afterData.assignedTo) {
           const workerId = afterData.assignedTo;
           const issueDescription = afterData.description;
           const issueAddress = afterData.address;

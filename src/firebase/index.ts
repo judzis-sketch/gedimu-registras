@@ -35,7 +35,10 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  const messaging = isSupported().then(yes => yes ? getMessaging(firebaseApp) : null);
+  let messaging = null;
+  if (typeof window !== 'undefined') {
+    messaging = isSupported().then(yes => yes ? getMessaging(firebaseApp) : null);
+  }
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
