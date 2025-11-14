@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -516,9 +516,31 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
   });
 
   const downloadableActsCount = displayedFaults.length;
+  const newFaultsCount = faults.filter(fault => fault.status === 'new').length;
 
   const adminView = (
     <div className="space-y-4">
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card
+            isClickable={true}
+            onClick={() => setStatusFilter("new")}
+            className={cn(statusFilter === 'new' && 'ring-2 ring-primary')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Nauji gedimai
+            </CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{newFaultsCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Gedimai, laukiantys priskyrimo
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Ataskaitos pagal datą</CardTitle>
@@ -539,7 +561,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
             </Button>
         </CardContent>
       </Card>
-      <Tabs defaultValue="all" onValueChange={(value) => setStatusFilter(value as Status | "all")}>
+      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Status | "all")}>
         <TabsList className="grid w-full grid-cols-5 mb-4">
           <TabsTrigger value="all">Visi</TabsTrigger>
           <TabsTrigger value="new">Nauji</TabsTrigger>
@@ -769,5 +791,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     </>
   );
 }
+
+    
 
     
