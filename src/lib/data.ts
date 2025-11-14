@@ -3,7 +3,7 @@ import type { Fault, Worker } from "./types";
 export const workers: Worker[] = [
   { id: "worker-1", name: "Jonas Jonaitis", email: "jonas@zarasubustas.lt", password: "password123", specialty: ["electricity", "general"] },
   { id: "worker-2", name: "Petras Petraitis", email: "petras@zarasubustas.lt", password: "password123", specialty: ["plumbing"] },
-  { id: "worker-3", name: "Ona Onaitė", email: "ona@zarasubustas.lt", password: "password123", specialty: ["heating", "general"] },
+  { id: "worker-3", name: "Ona Onaitė", email: "ona@zarasubustas.lt", password: "password123", specialty: ["renovation", "general"] },
 ];
 
 export const faults: Omit<Fault, 'createdAt' | 'updatedAt'>[] = [
@@ -34,11 +34,12 @@ export const faults: Omit<Fault, 'createdAt' | 'updatedAt'>[] = [
     reporterEmail: "barbora@email.com",
     reporterPhone: "+37061234569",
     address: "Gedimino pr. 9, Vilnius",
-    type: "heating",
-    description: "Vienas radiatorius visiškai nešyla, nors sistema įjungta.",
+    type: "renovation",
+    description: "Reikalingas kosmetinis remontas koridoriuje po vamzdyno avarijos.",
     status: "completed",
     assignedTo: "worker-3",
-    signature: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+    workerSignature: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+    customerSignature: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
   },
   {
     id: "FAULT-004",

@@ -9,6 +9,6 @@ export function cn(...inputs: ClassValue[]) {
 export const faultTypeTranslations: Record<FaultType, string> = {
   electricity: "Elektra",
   plumbing: "Santechnika",
-  heating: "Šildymas",
+  renovation: "Renovacija",
   general: "Bendri gedimai",
 };

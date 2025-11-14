@@ -1,4 +1,4 @@
-export type FaultType = "electricity" | "plumbing" | "heating" | "general";
+export type FaultType = "electricity" | "plumbing" | "renovation" | "general";
 export type Status = "new" | "assigned" | "in-progress" | "completed";
 
 export interface NewWorkerData {

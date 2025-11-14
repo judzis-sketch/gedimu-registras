@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import { Bolt, Droplets, Flame, Wrench } from "lucide-react";
+import { Bolt, Droplets, Paintbrush, Wrench } from "lucide-react";
 import { FaultType } from "@/lib/types";
 
 export function Logo(props: SVGProps<SVGSVGElement>) {
@@ -26,7 +26,7 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
 const faultTypeIcons: Record<FaultType, React.ElementType> = {
   electricity: Bolt,
   plumbing: Droplets,
-  heating: Flame,
+  renovation: Paintbrush,
   general: Wrench,
 };
 
