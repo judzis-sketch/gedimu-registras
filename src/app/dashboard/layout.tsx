@@ -28,7 +28,7 @@ import { useAuth, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -110,7 +110,7 @@ export default function DashboardLayout({
           <SidebarHeader>
             <div className="flex items-center gap-2">
               <Logo className="size-7 text-primary" />
-              <span className="text-lg font-headline font-semibold">
+              <span className="font-headline text-lg font-semibold">
                 Gedimų Registras
               </span>
             </div>
@@ -207,13 +207,23 @@ export default function DashboardLayout({
         <header className="flex h-14 items-center gap-4 border-b bg-card px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex-1">
-             <h1 className="text-lg font-semibold md:text-xl font-headline">
+             <h1 className="font-headline text-lg font-semibold md:text-xl">
               {title}
             </h1>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 bg-background">{children}</main>
+        <main className="flex-1 bg-background p-4 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <DashboardLayoutContent>{children}</DashboardLayoutContent>
+  )
 }
