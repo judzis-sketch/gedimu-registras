@@ -29,7 +29,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateNotification } from "@/ai/flows/generate-notification-flow";
 
 interface DashboardClientProps {
   initialWorkers: Worker[];
@@ -81,10 +82,11 @@ export function DashboardClient({
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
   const statusChangeSubMenu = (fault: Fault) => (
     <DropdownMenuSub>
-     <DropdownMenuSubTrigger>
+     <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
        <Clock className="mr-2 h-4 w-4" />
        <span>Keisti būseną</span>
      </DropdownMenuSubTrigger>
@@ -99,7 +101,8 @@ export function DashboardClient({
    </DropdownMenuSub>
  );
 
-  const handleAssignWorker = (faultId: string, workerId: string) => {
+  const handleAssignWorker = async (faultId: string, workerId: string) => {
+    setIsUpdating(faultId);
     let faultToUpdate: Fault | undefined;
 
     setFaults((prevFaults) =>
@@ -113,15 +116,42 @@ export function DashboardClient({
     );
 
     if (faultToUpdate) {
-        const workerName = initialWorkers.find(w => w.id === workerId)?.name;
-        toast({
-          title: "Specialistas priskirtas",
-          description: `Gedimas ${faultId} priskirtas ${workerName}. Vartotojas ${faultToUpdate.reporterEmail} informuotas.`,
-        });
+        const worker = initialWorkers.find(w => w.id === workerId);
+        try {
+            const notification = await generateNotification({
+                faultId: faultToUpdate.id,
+                faultDescription: faultToUpdate.description,
+                reporterName: faultToUpdate.reporterName,
+                newStatus: 'priskirtas',
+                details: `Gedimą tvarkys specialistas ${worker?.name}.`
+            });
+
+            toast({
+              title: "Specialistas priskirtas ir vartotojas informuotas",
+              description: (
+                <div className="text-xs">
+                    <p className="font-bold">Laiško tema:</p>
+                    <p>{notification.subject}</p>
+                    <p className="font-bold mt-2">Laiško turinys:</p>
+                    <p className="whitespace-pre-wrap">{notification.body}</p>
+                </div>
+              ),
+              duration: 10000,
+            });
+        } catch (error) {
+            console.error("Failed to generate notification:", error);
+            toast({
+                variant: "destructive",
+                title: "Klaida",
+                description: "Nepavyko sugeneruoti pranešimo vartotojui."
+            })
+        }
     }
+    setIsUpdating(null);
   };
 
-  const handleUpdateStatus = (faultId: string, status: Status) => {
+  const handleUpdateStatus = async (faultId: string, status: Status) => {
+    setIsUpdating(faultId);
     let faultToUpdate: Fault | undefined;
 
     setFaults((prevFaults) =>
@@ -135,11 +165,37 @@ export function DashboardClient({
     );
 
     if (faultToUpdate) {
-     toast({
-      title: "Būsena atnaujinta",
-      description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}". Vartotojas ${faultToUpdate.reporterEmail} informuotas.`,
-    });
+        try {
+             const notification = await generateNotification({
+                faultId: faultToUpdate.id,
+                faultDescription: faultToUpdate.description,
+                reporterName: faultToUpdate.reporterName,
+                newStatus: statusConfig[status].label,
+                details: `Jūsų gedimo ${faultId} būsena buvo atnaujinta.`
+            });
+             toast({
+                title: "Būsena atnaujinta ir vartotojas informuotas",
+                description: (
+                <div className="text-xs">
+                    <p className="font-bold">Laiško tema:</p>
+                    <p>{notification.subject}</p>
+                    <p className="font-bold mt-2">Laiško turinys:</p>
+                    <p className="whitespace-pre-wrap">{notification.body}</p>
+                </div>
+                ),
+                duration: 10000,
+            });
+
+        } catch (error) {
+            console.error("Failed to generate notification:", error);
+             toast({
+                variant: "destructive",
+                title: "Klaida",
+                description: "Nepavyko sugeneruoti pranešimo vartotojui."
+            })
+        }
     }
+     setIsUpdating(null);
   };
 
   const getWorkerName = (workerId?: string) => {
@@ -228,9 +284,13 @@ export function DashboardClient({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating === fault.id}>
+                        {isUpdating === fault.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                        )}
                         <span className="sr-only">Atidaryti meniu</span>
-                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -243,7 +303,7 @@ export function DashboardClient({
                       {view === "admin" && (
                         <>
                           <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
+                            <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
                               <User className="mr-2 h-4 w-4" />
                               <span>Priskirti specialistą</span>
                             </DropdownMenuSubTrigger>
