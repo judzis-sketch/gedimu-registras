@@ -22,6 +22,8 @@ import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import { workers } from "@/lib/data";
+import { useFaults } from "@/context/faults-context";
+import { Badge } from "@/components/ui/badge";
 
 const MOCK_LOGGED_IN_WORKER_ID = "worker-1";
 
@@ -35,12 +37,17 @@ export default function DashboardLayout({
   const searchParams = useSearchParams();
   const router = useRouter();
   const role = searchParams.get("role") || "user";
+  const { faults } = useFaults();
 
   const handleLogout = () => {
     router.push("/");
   };
   
   const worker = workers.find(w => w.id === MOCK_LOGGED_IN_WORKER_ID);
+
+  const newFaultsCount = faults.filter(f => f.status === 'new').length;
+  const workerTasksCount = faults.filter(f => f.assignedTo === MOCK_LOGGED_IN_WORKER_ID && f.status !== 'completed').length;
+
 
   const userConfig = {
     admin: {
@@ -61,9 +68,12 @@ export default function DashboardLayout({
   }[role as "admin" | "worker" | "user"] || { name: "Vartotojas", role: "Pranešėjas", avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f" };
 
   let title = "Gedimų Registras";
-  if (role === 'admin') {
+  if (role === 'admin' && pathname === '/dashboard') {
     title = "Visos gedimų užklausos";
-  } else if (role === 'worker') {
+  } else if (role === 'worker' && pathname === '/dashboard/my-tasks') {
+    title = "Mano užduotys";
+  } else if (role === 'admin' && pathname === '/dashboard/my-tasks') {
+    // When admin views worker's tasks
     title = "Mano užduotys";
   }
 
@@ -89,7 +99,10 @@ export default function DashboardLayout({
                 >
                   <Link href={{ pathname: "/dashboard", query: { role: 'admin' } }}>
                     <LayoutDashboard />
-                    <span>Visos užklausos</span>
+                    <span className="flex-1">Visos užklausos</span>
+                     {newFaultsCount > 0 && (
+                      <Badge className="ml-auto h-5">{newFaultsCount}</Badge>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -103,7 +116,10 @@ export default function DashboardLayout({
                 >
                   <Link href={{ pathname: "/dashboard/my-tasks", query: { role: role } }}>
                     <Wrench />
-                    <span>Mano užduotys</span>
+                    <span className="flex-1">Mano užduotys</span>
+                    {workerTasksCount > 0 && (
+                      <Badge variant="secondary" className="ml-auto h-5">{workerTasksCount}</Badge>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
