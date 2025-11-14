@@ -226,7 +226,7 @@ export function DashboardClient({
       description: `Specialistas ${workerName} priskirtas gedimui ${faultId}.`,
     });
     
-    openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig.assigned.label, workerName);
+    openNotificationEditor({ ...fault, ...updatedFaultData, assignedTo: workerId }, statusConfig.assigned.label, workerName);
     
     setIsUpdating(null);
   };
@@ -469,7 +469,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     } else if (view === 'admin') {
       filteredFaults = faults.filter(fault => {
         const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-        const dateMatch = dateRange?.from && dateRange.to && fault.createdAt
+        const dateMatch = dateRange?.from && dateRange.to && fault.createdAt?.toDate
           ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
           : true;
         return statusMatch && dateMatch;
