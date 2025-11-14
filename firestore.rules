@@ -31,7 +31,7 @@ service cloud.firestore {
      */
     match /issues/{issueId} {
       allow get: if true;
-      allow list: if true;
+      allow list: if request.auth != null;
       allow create: if true;
       allow update: if isSignedIn() && (isAdmin() || request.auth.uid == resource.data.assignedTo);
       allow delete: if isSignedIn() && isExistingOwner(resource.data.assignedTo);
