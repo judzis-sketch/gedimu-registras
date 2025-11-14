@@ -212,7 +212,7 @@ export function DashboardClient({
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
     
-    const fault = faults?.find(f => f.id === faultId);
+    const fault = faults?.find(f => f.docId === faultId);
     if (!fault) return;
 
     const updatedFaultData = { assignedTo: workerId, status: "assigned" as Status };
@@ -221,7 +221,7 @@ export function DashboardClient({
     const workerName = workers?.find(w => w.id === workerId)?.name;
     toast({
       title: "Specialistas priskirtas",
-      description: `Specialistas ${workerName} priskirtas gedimui ${faultId}.`,
+      description: `Specialistas ${workerName} priskirtas gedimui ${fault.id}.`,
     });
     
     openNotificationEditor({ ...fault, ...updatedFaultData, assignedTo: workerId }, statusConfig.assigned.label, workerName);
@@ -231,7 +231,7 @@ export function DashboardClient({
 
   const handleUpdateStatus = (faultId: string, status: Status) => {
     setIsUpdating(faultId);
-    const fault = faults?.find(f => f.id === faultId);
+    const fault = faults?.find(f => f.docId === faultId);
     if (!fault) return;
 
     const updatedFaultData = { status: status, updatedAt: new Date() };
@@ -239,7 +239,7 @@ export function DashboardClient({
 
     toast({
         title: `Būsena pakeista`,
-        description: `Gedimo ${faultId} būsena pakeista į "${statusConfig[status].label}".`,
+        description: `Gedimo ${fault.id} būsena pakeista į "${statusConfig[status].label}".`,
     });
     openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig[status].label);
 
@@ -257,7 +257,7 @@ export function DashboardClient({
 
 const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: string) => {
     if (!faults) return;
-    const currentFault = faults.find(f => f.id === faultId);
+    const currentFault = faults.find(f => f.docId === faultId);
     if (!currentFault || !currentFault.workerSignature) return;
 
     const tempActContainer = document.createElement('div');
@@ -643,7 +643,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               </TableRow>
             ) : (
               displayedAndSortedFaults.map((fault) => (
-              <TableRow key={fault.id}>
+              <TableRow key={fault.docId}>
                 <TableCell className="font-medium">{fault.id}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2" title={fault.type}>
@@ -665,18 +665,18 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                     <TableCell>
                         <div className="flex flex-col gap-2">
                         {fault.status === 'assigned' && (
-                            <Button size="sm" onClick={() => handleUpdateStatus(fault.id, 'in-progress')} disabled={isUpdating === fault.id}>
-                                {isUpdating === fault.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wrench className="mr-2 h-4 w-4" />}
+                            <Button size="sm" onClick={() => handleUpdateStatus(fault.docId, 'in-progress')} disabled={isUpdating === fault.docId}>
+                                {isUpdating === fault.docId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wrench className="mr-2 h-4 w-4" />}
                                 Pradėti
                             </Button>
                         )}
                         {fault.status === 'in-progress' && (
                            <>
-                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'worker'})} disabled={!!fault.workerSignature || isUpdating === fault.id}>
+                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'worker'})} disabled={!!fault.workerSignature || isUpdating === fault.docId}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Darbuotojo parašas
                                 </Button>
-                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'customer'})} disabled={!fault.workerSignature || !!fault.customerSignature || isUpdating === fault.id}>
+                                <Button size="sm" onClick={() => setFaultToSign({fault: fault, type: 'customer'})} disabled={!fault.workerSignature || !!fault.customerSignature || isUpdating === fault.docId}>
                                      <User className="mr-2 h-4 w-4" />
                                      Užsakovo parašas
                                 </Button>
@@ -691,8 +691,8 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating === fault.id}>
-                        {isUpdating === fault.id ? (
+                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating === fault.docId}>
+                        {isUpdating === fault.docId ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                             <MoreHorizontal className="h-4 w-4" />
@@ -738,20 +738,20 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                       {view === "admin" && workers && (
                           <>
                             <DropdownMenuSub>
-                              <DropdownMenuSubTrigger disabled={isUpdating === fault.id}>
+                              <DropdownMenuSubTrigger disabled={isUpdating === fault.docId}>
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Priskirti specialistą</span>
                               </DropdownMenuSubTrigger>
                               <DropdownMenuSubContent>
                                   {workers.map(worker => (
-                                      <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
+                                      <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.docId, worker.id)}>
                                           {worker.name}
                                       </DropdownMenuItem>
                                   ))}
                               </DropdownMenuSubContent>
                             </DropdownMenuSub>
                             <DropdownMenuSub>
-                                <DropdownMenuSubTrigger disabled={isUpdating === fault.id || fault.status === 'completed'}>
+                                <DropdownMenuSubTrigger disabled={isUpdating === fault.docId || fault.status === 'completed'}>
                                   <Wrench className="mr-2 h-4 w-4" />
                                   <span>Keisti būseną</span>
                                 </DropdownMenuSubTrigger>
@@ -759,14 +759,14 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                                   {(Object.keys(statusConfig) as Status[])
                                     .filter(s => s !== fault.status && s !== 'completed')
                                     .map(status => (
-                                      <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(fault.id, status)}>
+                                      <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(fault.docId, status)}>
                                           {statusConfig[status].label}
                                       </DropdownMenuItem>
                                   ))}
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
                             {fault.status !== 'completed' && (
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(fault.id, 'completed')}>
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(fault.docId, 'completed')}>
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     <span>Užbaigti darbą</span>
                                 </DropdownMenuItem>
@@ -881,9 +881,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                    <SignaturePad 
                     onSave={(signatureDataUrl) => {
                         if (faultToSign.type === 'worker') {
-                            handleSaveWorkerSignature(faultToSign.fault.id, signatureDataUrl);
+                            handleSaveWorkerSignature(faultToSign.fault.docId, signatureDataUrl);
                         } else {
-                            handleSaveCustomerSignature(faultToSign.fault.id, signatureDataUrl);
+                            handleSaveCustomerSignature(faultToSign.fault.docId, signatureDataUrl);
                         }
                     }} 
                    />
