@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface FaultsContextType {
@@ -24,6 +24,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const { workers } = useWorkers();
 
   const addFault = (faultData: NewFaultData) => {
+    if (!faultsCollection) return;
     if (!workers) return;
 
     const newFaultBase = {
@@ -55,6 +56,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
+    if (!firestore) return;
     const faultRef = doc(firestore, 'issues', faultId);
     updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
   };

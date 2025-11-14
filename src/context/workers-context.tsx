@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { NewWorkerData, Worker } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
@@ -26,6 +26,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
   const { data: workers, isLoading } = useCollection<Worker>(workersCollection);
 
   const addWorker = async (workerData: NewWorkerData) => {
+    if (!firestore) return;
     if (!workerData.password) {
       throw new Error("Password is required to create a new worker.");
     }
@@ -36,7 +37,8 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
         const userCredential = await createUserWithEmailAndPassword(auth, workerData.email, workerData.password);
         const { password, ...workerDocData } = workerData;
         const workerRef = doc(firestore, 'employees', userCredential.user.uid);
-        await setDoc(workerRef, workerDocData); // Use await here to ensure doc is created
+        // Use non-blocking update for consistency
+        setDocumentNonBlocking(workerRef, workerDocData, { merge: false });
     } catch (error) {
         console.error("Error creating worker: ", error);
         // Here you might want to delete the created user if the doc creation failed
@@ -45,6 +47,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateWorker = (workerId: string, workerData: Partial<NewWorkerData>) => {
+    if (!firestore) return;
     const workerRef = doc(firestore, 'employees', workerId);
     setDocumentNonBlocking(workerRef, workerData, { merge: true });
   };
@@ -52,6 +55,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
   const deleteWorker = (workerId: string) => {
     // Note: This only deletes the Firestore document, not the Firebase Auth user.
     // Deleting the auth user requires admin privileges, typically via Firebase Functions.
+    if (!firestore) return;
     const workerRef = doc(firestore, 'employees', workerId);
     deleteDocumentNonBlocking(workerRef);
   };
