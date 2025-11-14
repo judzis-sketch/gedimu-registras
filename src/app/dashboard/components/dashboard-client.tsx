@@ -22,7 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, CheckCircle, Clock } from "lucide-react";
+import { MoreHorizontal, User, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -30,11 +30,12 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { lt } from "date-fns/locale";
+import { useFaults } from "@/context/faults-context";
 
 interface DashboardClientProps {
-  initialFaults: Fault[];
   initialWorkers: Worker[];
   view: "admin" | "worker";
+  workerId?: string;
 }
 
 const statusConfig: Record<
@@ -47,22 +48,27 @@ const statusConfig: Record<
   completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white" },
 };
 
-const FormattedDate = ({ date }: { date: Date }) => {
+const FormattedDate = ({ date }: { date: Date | string }) => {
     const [formattedDate, setFormattedDate] = useState("");
 
     useEffect(() => {
-        setFormattedDate(format(date, 'yyyy-MM-dd HH:mm', { locale: lt }));
+        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        setFormattedDate(format(dateObj, 'yyyy-MM-dd HH:mm', { locale: lt }));
     }, [date]);
+
+    if (!formattedDate) {
+        return null;
+    }
 
     return <>{formattedDate}</>;
 };
 
 export function DashboardClient({
-  initialFaults,
   initialWorkers,
   view,
+  workerId,
 }: DashboardClientProps) {
-  const [faults, setFaults] = useState<Fault[]>(initialFaults.map(f => ({...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt)})));
+  const { faults, setFaults } = useFaults();
   const { toast } = useToast();
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
@@ -97,6 +103,10 @@ export function DashboardClient({
     return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
   
+  const displayedFaults = view === 'admin'
+    ? faults
+    : faults.filter(fault => fault.assignedTo === workerId && fault.status !== 'completed');
+
   return (
       <Card>
         <CardHeader>
@@ -119,14 +129,14 @@ export function DashboardClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {faults.length === 0 ? (
+              {displayedFaults.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center">
                     {view === 'worker' ? "Neturite priskirtų užduočių." : "Nėra registruotų gedimų."}
                   </TableCell>
                 </TableRow>
               ) : (
-                faults.map((fault) => (
+                displayedFaults.map((fault) => (
                 <TableRow key={fault.id}>
                   <TableCell className="font-medium">{fault.id}</TableCell>
                   <TableCell>

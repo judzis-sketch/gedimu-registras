@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useFaults } from "@/context/faults-context";
+import { FaultType } from "@/lib/types";
 
 const formSchema = z.object({
   reporterName: z.string().min(2, "Vardas turi būti bent 2 simbolių ilgio."),
@@ -35,7 +37,7 @@ const formSchema = z.object({
   description: z.string().min(10, "Aprašymas turi būti bent 10 simbolių ilgio.").max(500, "Aprašymas negali viršyti 500 simbolių."),
 });
 
-const faultTypeTranslations: { [key: string]: string } = {
+const faultTypeTranslations: Record<FaultType, string> = {
   electricity: "Elektra",
   plumbing: "Santechnika",
   heating: "Šildymas",
@@ -47,6 +49,7 @@ export function ReportFaultForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const { addFault } = useFaults();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,7 +66,7 @@ export function ReportFaultForm() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    console.log("Fault reported:", values);
+    addFault(values);
     
     setIsSubmitting(false);
     setIsSuccess(true);
@@ -135,11 +138,11 @@ export function ReportFaultForm() {
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Pasirinkite gedimo tipą" />
-                    </SelectTrigger>
+                    </Trigger>
                   </FormControl>
                   <SelectContent>
-                    {Object.entries(faultTypeTranslations).map(([key, value]) => (
-                        <SelectItem key={key} value={key}>{value}</SelectItem>
+                    {(Object.keys(faultTypeTranslations) as Array<keyof typeof faultTypeTranslations>).map((key) => (
+                        <SelectItem key={key} value={key}>{faultTypeTranslations[key]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
