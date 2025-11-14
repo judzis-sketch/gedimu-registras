@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, addDoc, setDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -25,11 +25,24 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   
   const { workers } = useWorkers();
 
-  const addFault = (faultData: NewFaultData) => {
-    if (!faultsCollection) return;
+  const addFault = async (faultData: NewFaultData) => {
+    if (!faultsCollection || !firestore) return;
+
+    // Generate custom sequential ID
+    let nextIdNumber = 1;
+    if (faults && faults.length > 0) {
+      const existingIds = faults
+        .map(f => parseInt(f.id.replace('FAULT-', ''), 10))
+        .filter(n => !isNaN(n));
+      if (existingIds.length > 0) {
+        nextIdNumber = Math.max(...existingIds) + 1;
+      }
+    }
+    const newFaultId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
 
     const newFaultBase = {
       ...faultData,
+      id: newFaultId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -49,13 +62,17 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    const newFault: Omit<Fault, 'id'> = {
+    const newFault: Omit<Fault, 'docId'> = {
       ...newFaultBase,
       status: assignedWorker ? 'assigned' : 'new',
       assignedTo: assignedWorker ? assignedWorker.id : '',
     };
     
-    addDoc(faultsCollection, newFault).catch(error => {
+    // We must use `setDoc` with a custom-generated Firestore ID to avoid race conditions
+    // when multiple users create faults at the same time. `addDoc` is not suitable here.
+    const newDocRef = doc(faultsCollection);
+
+    setDoc(newDocRef, newFault).catch(error => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -68,8 +85,16 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
-    if (!firestore) return;
-    const faultRef = doc(firestore, 'issues', faultId);
+    if (!firestore || !faults) return;
+    
+    // Find the document's real Firestore ID based on the custom `id` field.
+    const faultDoc = faults.find(f => f.id === faultId);
+    if (!faultDoc) {
+        console.error(`Fault with custom ID ${faultId} not found for update.`);
+        return;
+    }
+
+    const faultRef = doc(firestore, 'issues', faultDoc.docId);
     updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
   };
 

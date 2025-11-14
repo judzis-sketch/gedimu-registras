@@ -181,7 +181,7 @@ export function DashboardClient({
     from: addDays(new Date(), -30),
     to: new Date(),
   });
-  const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
   const [isAddFaultDialogOpen, setIsAddFaultDialogOpen] = useState(false);
@@ -236,7 +236,7 @@ export function DashboardClient({
     const fault = faults?.find(f => f.id === faultId);
     if (!fault) return;
 
-    const updatedFaultData = { status: status };
+    const updatedFaultData = { status: status, updatedAt: new Date() };
     updateFault(faultId, updatedFaultData);
 
     toast({
@@ -295,6 +295,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
             status: "completed",
             customerSignature: signatureDataUrl,
             actImageUrl: actImageUrl,
+            updatedAt: new Date(),
         };
         
         updateFault(faultId, updatedFaultData);
@@ -476,11 +477,19 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
       });
     }
 
-    return filteredFaults.sort((a, b) => {
+    return [...filteredFaults].sort((a, b) => {
         if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
           const dateA = a[sortKey]?.toDate ? a[sortKey].toDate().getTime() : 0;
           const dateB = b[sortKey]?.toDate ? b[sortKey].toDate().getTime() : 0;
           return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+
+        if (sortKey === 'id') {
+            const numA = parseInt(a.id.replace('FAULT-', ''), 10);
+            const numB = parseInt(b.id.replace('FAULT-', ''), 10);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                 return sortDirection === 'asc' ? numA - numB : numB - numA;
+            }
         }
         
         let valA: string | undefined;
@@ -492,7 +501,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         } else if (sortKey === 'assignedTo') {
           valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
           valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
-        } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
+        } else if (sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
           valA = a[sortKey];
           valB = b[sortKey];
         }
@@ -506,7 +515,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           return valB.localeCompare(valA, 'lt', { numeric: true });
         }
       });
-  }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
+  }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user?.uid]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
@@ -636,7 +645,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               </TableRow>
             ) : (
               displayedAndSortedFaults.map((fault) => (
-              <TableRow key={fault.id}>
+              <TableRow key={fault.docId}>
                 <TableCell className="font-medium">{fault.id}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2" title={fault.type}>
