@@ -60,7 +60,6 @@ import { useUser } from "@/firebase";
 
 interface DashboardClientProps {
   view: "admin" | "worker";
-  workerId?: string;
 }
 
 type SortKey = 'id' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'createdAt';
@@ -165,7 +164,6 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
 
 export function DashboardClient({
   view,
-  workerId,
 }: DashboardClientProps) {
   const { faults, updateFault, isLoading: faultsLoading } = useFaults();
   const { workers, isLoading: workersLoading } = useWorkers();
