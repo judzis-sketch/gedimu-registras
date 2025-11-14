@@ -57,7 +57,7 @@ interface DashboardClientProps {
   workerId?: string;
 }
 
-type SortKey = 'status' | 'assignedTo' | 'updatedAt';
+type SortKey = 'id' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt';
 
 const statusConfig: Record<
   Status,
@@ -83,6 +83,22 @@ const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
     }
 
     return <>{formattedDate}</>;
+};
+
+const SortableHeader = ({ sortKey: key, children, handleSort, currentSortKey, currentSortDirection }: { sortKey: SortKey, children: React.ReactNode, handleSort: (key: SortKey) => void, currentSortKey: SortKey, currentSortDirection: 'asc' | 'desc' }) => {
+    const isActive = currentSortKey === key;
+    return (
+        <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
+        <div className="flex items-center gap-2">
+            {children}
+            {isActive ? (
+                currentSortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+            ) : (
+                <ArrowDown className="h-4 w-4 text-muted-foreground/50" />
+            )}
+        </div>
+        </TableHead>
+    );
 };
 
 const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSignatureDataUrl, innerRef }: { fault: Fault, assignedWorker: Worker | undefined, workerSignatureDataUrl?: string, customerSignatureDataUrl?: string, innerRef?: React.Ref<HTMLDivElement> }) => {
@@ -133,21 +149,6 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
   );
 };
 
-const SortableHeader = ({ sortKey: key, children, handleSort, currentSortKey, currentSortDirection }: { sortKey: SortKey, children: React.ReactNode, handleSort: (key: SortKey) => void, currentSortKey: SortKey, currentSortDirection: 'asc' | 'desc' }) => {
-    const isActive = currentSortKey === key;
-    return (
-        <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
-        <div className="flex items-center gap-2">
-            {children}
-            {isActive ? (
-                currentSortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-            ) : (
-                <ArrowDown className="h-4 w-4 text-muted-foreground/50" />
-            )}
-        </div>
-        </TableHead>
-    );
-};
 
 export function DashboardClient({
   view,
@@ -527,14 +528,18 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     } else if (sortKey === 'assignedTo') {
       valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
       valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
+    } else if (sortKey === 'id' || sortKey === 'type' || sortKey === 'address') {
+      valA = a[sortKey];
+      valB = b[sortKey];
     }
 
-    if (!valA || !valB) return 0;
+
+    if (valA === undefined || valB === undefined) return 0;
     
     if (sortDirection === 'asc') {
-      return valA.localeCompare(valB);
+      return valA.localeCompare(valB, undefined, { numeric: true });
     } else {
-      return valB.localeCompare(valA);
+      return valB.localeCompare(valA, undefined, { numeric: true });
     }
   });
 
@@ -631,9 +636,19 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Tipas</TableHead>
-              <TableHead>Adresas</TableHead>
+              {view === 'admin' ? (
+                 <>
+                    <SortableHeader sortKey="id" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
+                    <SortableHeader sortKey="type" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Tipas</SortableHeader>
+                    <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
+                 </>
+              ) : (
+                <>
+                  <TableHead className="w-[100px]">ID</TableHead>
+                  <TableHead>Tipas</TableHead>
+                  <TableHead>Adresas</TableHead>
+                </>
+              )}
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
               <SortableHeader sortKey="status" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Būsena</SortableHeader>
               <SortableHeader sortKey="assignedTo" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Priskirta</SortableHeader>
