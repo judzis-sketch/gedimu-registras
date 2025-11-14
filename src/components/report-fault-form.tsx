@@ -27,10 +27,6 @@ import { useState } from "react";
 import { useFaults } from "@/context/faults-context";
 import { FaultType, NewFaultData } from "@/lib/types";
 
-const phoneRegex = new RegExp(
-  /^(\+370|8)[\s-]?(\d{3})[\s-]?(\d{2})[\s-]?(\d{3})$/
-);
-
 const formSchema = z.object({
   reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
