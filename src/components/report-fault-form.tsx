@@ -51,7 +51,16 @@ export function ReportFaultForm() {
     type: z.enum(["electricity", "plumbing", "heating", "general"], {
       errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
     }),
-    description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." }),
+    description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." })
+      .refine(value => {
+        if (!forbiddenWords || forbiddenWords.length === 0) {
+            return true;
+        }
+        const regex = new RegExp(`\\b(${forbiddenWords.join("|")})\\b`, "gi");
+        return !regex.test(value);
+      }, {
+        message: "Aprašyme yra neleistinų žodžių. Prašome juos pašalinti."
+      })
   }), [forbiddenWords]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -65,21 +74,12 @@ export function ReportFaultForm() {
     },
   });
 
-  const censorText = (text: string) => {
-    let censoredText = text;
-    const regex = new RegExp(`\\b(${forbiddenWords.join("|")})\\b`, "gi");
-    censoredText = censoredText.replace(regex, (match) => '*'.repeat(match.length));
-    return censoredText;
-  };
-
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    const censoredDescription = censorText(values.description);
     const fullPhoneNumber = `+370${values.reporterPhone}`;
-    addFault({ ...values, description: censoredDescription, reporterPhone: fullPhoneNumber } as NewFaultData);
+    addFault({ ...values, reporterPhone: fullPhoneNumber } as NewFaultData);
     
     setIsSubmitting(false);
     setIsSuccess(true);
