@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -179,11 +179,31 @@ export function DashboardClient({
   const mailtoLink = `mailto:${fault.reporterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
-    <ToastAction altText="Siųsti pranešimą" asChild>
-      <a href={mailtoLink}><Send className="mr-2 h-4 w-4" /> Siųsti pranešimą</a>
+    <ToastAction altText="Siųsti el. laišką" asChild>
+      <a href={mailtoLink}><Send className="mr-2 h-4 w-4" /> El. laiškas</a>
     </ToastAction>
   )
 };
+
+const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
+    let body = `Laba diena, informuojame, kad gedimo ${fault.id} (${fault.address}) būsena pakeista į "${newStatusLabel}".`;
+
+    if (assignedWorkerName) {
+        body += ` Priskirtas specialistas: ${assignedWorkerName}.`;
+    }
+    
+    if (newStatusLabel === 'Užbaigtas') {
+        body += ` Problema išspręsta.`;
+    }
+
+    const smsLink = `sms:${fault.reporterPhone}?body=${encodeURIComponent(body)}`;
+
+    return (
+        <ToastAction altText="Siųsti SMS" asChild>
+            <a href={smsLink}><MessageSquare className="mr-2 h-4 w-4" /> SMS</a>
+        </ToastAction>
+    )
+}
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
@@ -203,8 +223,13 @@ export function DashboardClient({
       const workerName = workers.find(w => w.id === workerId)?.name;
       toast({
         title: "Specialistas priskirtas",
-        description: "Paruoštas pranešimas vartotojui.",
-        action: createMailToAction(updatedFault, statusConfig.assigned.label, workerName)
+        description: "Paruošti pranešimai vartotojui.",
+        action: (
+          <div className="flex gap-2">
+            {createMailToAction(updatedFault, statusConfig.assigned.label, workerName)}
+            {createSmsAction(updatedFault, statusConfig.assigned.label, workerName)}
+          </div>
+        )
       });
     }
     
@@ -228,8 +253,13 @@ export function DashboardClient({
      if(updatedFault) {
         toast({
             title: `Būsena pakeista į "${statusConfig[status].label}"`,
-            description: "Paruoštas pranešimas vartotojui.",
-            action: createMailToAction(updatedFault, statusConfig[status].label)
+            description: "Paruošti pranešimai vartotojui.",
+            action: (
+              <div className="flex gap-2">
+                 {createMailToAction(updatedFault, statusConfig[status].label)}
+                 {createSmsAction(updatedFault, statusConfig[status].label)}
+              </div>
+            )
         });
      }
 
@@ -275,7 +305,12 @@ export function DashboardClient({
         toast({
             title: "Parašas išsaugotas ir aktas suformuotas!",
             description: `Būsena pakeista į "Užbaigtas".`,
-            action: createMailToAction(updatedFault, statusConfig.completed.label),
+            action: (
+                 <div className="flex gap-2">
+                    {createMailToAction(updatedFault, statusConfig.completed.label)}
+                    {createSmsAction(updatedFault, statusConfig.completed.label)}
+                 </div>
+            ),
         });
         }
     }
