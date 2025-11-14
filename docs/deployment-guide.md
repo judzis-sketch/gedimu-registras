@@ -39,11 +39,11 @@ Po šių žingsnių, jūsų `Firebase` projektas bus susietas su `GitHub` repozi
 
 ## 4. Ką daryti, jei `init` komanda neveikia kaip tikėtasi?
 
-Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, `firebase init apphosting` komanda gali neparodyti projekto pasirinkimo lentelės arba elgtis keistai.
+Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, `firebase init apphosting` komanda gali neparodyti projektų sąrašo, `GitHub` susiejimo klausimo ar elgtis keistai.
 
 **Pirmiausia, išvalykite seną konfigūraciją:**
-1. Patikrinkite, ar jūsų pagrindiniame projekto kataloge yra failai pavadinimu `.firebaserc` arba `firebase.json`.
-2. Jei šie failai egzistuoja, **ištrinkite juos**. Tai leis `Firebase CLI` pradėti procesą nuo nulio.
+1.  Patikrinkite, ar jūsų pagrindiniame projekto kataloge yra failai pavadinimu `.firebaserc` arba `firebase.json`.
+2.  Jei šie failai egzistuoja, **ištrinkite juos**. Tai leis `Firebase CLI` pradėti procesą nuo nulio ir užduoti visus reikiamus klausimus.
 
 **Tada, patikrinkite prisijungimą ir projektus:**
 1.  Priverstinai prisijunkite iš naujo, kad įsitikintumėte, jog naudojate teisingą Google paskyrą:
@@ -56,14 +56,14 @@ Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, 
     ```
     Sąraše turėtumėte matyti projektą su ID **`studio-8901194696-cbab9`**.
 
-3.  Kai įsitikinsite, kad viskas gerai, vėl vykdykite `firebase init apphosting`. Dabar turėtumėte matyti interaktyvius pasirinkimus.
+3.  Kai įsitikinsite, kad viskas gerai, vėl vykdykite `firebase init apphosting`. Dabar turėtumėte matyti visus interaktyvius pasirinkimus, įskaitant projekto ir `GitHub` pasirinkimą.
 
 
 ## 5. Kaip susieti programą su GitHub?
 
 `App Hosting` yra sukurtas taip, kad veiktų su `GitHub`. Tai reiškia, kad kaskart, kai įkelsite (`push`) kodo pakeitimus į savo repozitoriją, `Firebase` automatiškai pradės diegimo procesą.
 
-Jei vykdant `firebase init apphosting` praleidote `GitHub` susiejimo žingsnį, tiesiog paleiskite komandą iš naujo. `Firebase` patikrins esamą konfigūraciją ir leis jums nustatyti `GitHub` repozitoriją:
+Jei vykdant `firebase init apphosting` praleidote `GitHub` susiejimo žingsnį arba jo nematėte, tiesiog paleiskite komandą iš naujo (prieš tai įsitikinę, kad ištrynėte `.firebaserc` ir `firebase.json` failus). `Firebase` patikrins esamą konfigūraciją ir leis jums nustatyti `GitHub` repozitoriją:
 
 1.  Paleiskite `firebase init apphosting` dar kartą.
 2.  Kai `CLI` paklaus **"Set up a GitHub repository for continual deployment?"**, atsakykite `Yes`.
