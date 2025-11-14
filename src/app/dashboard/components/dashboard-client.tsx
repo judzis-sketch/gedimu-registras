@@ -181,7 +181,8 @@ export function DashboardClient({
   };
   
   const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
-    if (!actTemplateRef.current) return;
+    const currentFault = faults.find(f => f.id === faultId);
+    if (!actTemplateRef.current || !currentFault) return;
 
     // Temporarily append the signature image to get the full HTML
     const signatureImg = document.createElement('img');
@@ -189,34 +190,41 @@ export function DashboardClient({
     signatureImg.width = 200;
     signatureImg.height = 100;
     signatureImg.alt = "Kliento parašas";
-    actTemplateRef.current.querySelector('[data-signature-placeholder]')?.appendChild(signatureImg);
+    signatureImg.style.marginTop = '0.5rem';
+
+    const placeholder = actTemplateRef.current.querySelector('[data-signature-placeholder]');
+    placeholder?.appendChild(signatureImg);
 
     const actHtml = actTemplateRef.current.innerHTML;
 
     // Clean up the appended image
-    actTemplateRef.current.querySelector('[data-signature-placeholder]')!.innerHTML = '';
+    if (placeholder) {
+      placeholder.innerHTML = '';
+    }
 
+    let updatedFault: Fault | undefined;
     setFaults(prevFaults =>
-      prevFaults.map(f =>
-        f.id === faultId
-          ? {
+      prevFaults.map(f => {
+        if (f.id === faultId) {
+          updatedFault = {
               ...f,
               status: "completed",
               signature: actHtml,
               updatedAt: new Date()
-            }
-          : f
-      )
+            };
+          return updatedFault;
+        }
+        return f;
+      })
     );
 
     setFaultToSign(null);
 
-    const fault = faults.find(f => f.id === faultId);
-    if (fault) {
+    if (updatedFault) {
        toast({
          title: "Parašas išsaugotas ir aktas suformuotas!",
          description: `Būsena pakeista į "Užbaigtas".`,
-         action: createMailToAction({...fault, status: 'completed'}, statusConfig.completed.label),
+         action: createMailToAction(updatedFault, statusConfig.completed.label),
        });
     }
   };
@@ -327,7 +335,7 @@ export function DashboardClient({
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={(fault.status !== 'in-progress' && fault.status !== 'completed') || !!fault.signature}
+                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.signature}
                         onClick={() => setFaultToSign(fault)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
@@ -458,13 +466,15 @@ export function DashboardClient({
                     <div className="grid grid-cols-2 gap-8 pt-6">
                         <div>
                             <p className="font-semibold">Vykdytojas:</p>
+                            <p className="mt-2 font-medium">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</p>
                             <p className="mt-8 border-b border-foreground/50"></p>
                             <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
                         </div>
                         <div>
                              <p className="font-semibold">Užsakovas:</p>
+                             <p className="mt-2 font-medium">{faultToSign.reporterName}</p>
                              <div data-signature-placeholder></div>
-                             <p className="border-b border-foreground/50"></p>
+                             <p className="mt-8 border-b border-foreground/50"></p>
                              <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
                         </div>
                     </div>
