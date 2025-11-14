@@ -604,16 +604,16 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
         </TabsList>
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-headline">Visi gedimai</CardTitle>
-               <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Registruoti gedimą
-                </Button>
-            </CardHeader>
-            <CardContent>
-              {renderTable()}
-            </CardContent>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-headline">Visi gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Registruoti gedimą
+              </Button>
+          </CardHeader>
+          <CardContent>
+            {renderTable()}
+          </CardContent>
         </Card>
       </Tabs>
       <AddFaultDialog isOpen={isAddFaultDialogOpen} onOpenChange={setIsAddFaultDialogOpen} />
@@ -716,7 +716,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Veiksmai</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setSelectedFault(fault)}>
+                      <DropdownMenuItem onClick={()={() => setSelectedFault(fault)}>
                           <Info className="mr-2 h-4 w-4" />
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
@@ -757,7 +757,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                                 <span>Priskirti specialistą</span>
                               </DropdownMenuSubTrigger>
                               <DropdownMenuSubContent>
-                                  {workers.map(worker => (
+                                  {workers
+                                    .filter(worker => worker.specialty.includes(fault.type))
+                                    .map(worker => (
                                       <DropdownMenuItem key={worker.docId} onClick={() => handleAssignWorker(fault.docId, worker.docId)}>
                                           {worker.name}
                                       </DropdownMenuItem>
