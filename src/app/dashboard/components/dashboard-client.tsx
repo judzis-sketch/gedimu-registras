@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -47,12 +47,22 @@ const statusConfig: Record<
   completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white" },
 };
 
+const FormattedDate = ({ date }: { date: Date }) => {
+    const [formattedDate, setFormattedDate] = useState("");
+
+    useEffect(() => {
+        setFormattedDate(format(date, 'yyyy-MM-dd HH:mm', { locale: lt }));
+    }, [date]);
+
+    return <>{formattedDate}</>;
+};
+
 export function DashboardClient({
   initialFaults,
   initialWorkers,
   view,
 }: DashboardClientProps) {
-  const [faults, setFaults] = useState<Fault[]>(initialFaults);
+  const [faults, setFaults] = useState<Fault[]>(initialFaults.map(f => ({...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt)})));
   const { toast } = useToast();
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
@@ -134,7 +144,7 @@ export function DashboardClient({
                   </TableCell>
                   <TableCell>{getWorkerName(fault.assignedTo)}</TableCell>
                    <TableCell>
-                    {format(fault.updatedAt, 'yyyy-MM-dd HH:mm', { locale: lt })}
+                    <FormattedDate date={fault.updatedAt} />
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
