@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc, addDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -28,11 +28,10 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const addFault = async (faultData: Omit<NewFaultData, 'id'>) => {
     if (!faultsCollection || !firestore) return;
 
-    // Generate custom sequential ID
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
       const existingIds = faults
-        .map(f => parseInt(f.id.replace('FAULT-', ''), 10))
+        .map(f => f.id ? parseInt(f.id.replace('FAULT-', ''), 10) : 0)
         .filter(n => !isNaN(n));
       if (existingIds.length > 0) {
         nextIdNumber = Math.max(...existingIds) + 1;
@@ -61,22 +60,20 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
         assignedWorker = workerTasksCount[0].worker;
       }
     }
-
-    const newFault: Omit<Fault, 'id'> & { id: string } = {
+    
+    const newFaultData = {
       ...newFaultBase,
-      status: assignedWorker ? 'assigned' : 'new',
+      status: assignedWorker ? 'assigned' as const : 'new' as const,
       assignedTo: assignedWorker ? assignedWorker.id : '',
     };
-    
-    const newDocRef = doc(faultsCollection);
 
-    setDoc(newDocRef, newFault).catch(error => {
+    addDoc(faultsCollection, newFaultData).catch(error => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
           path: faultsCollection.path,
           operation: 'create',
-          requestResourceData: newFault,
+          requestResourceData: newFaultData,
         })
       )
     });
