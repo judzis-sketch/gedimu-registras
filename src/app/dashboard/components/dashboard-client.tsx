@@ -466,7 +466,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
         if (view === 'admin') {
           const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-          const dateMatch = dateRange?.from && dateRange.to 
+          const dateMatch = dateRange?.from && dateRange.to && fault.createdAt
             ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
             : true;
           return statusMatch && dateMatch;
