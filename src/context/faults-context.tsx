@@ -4,8 +4,10 @@ import React, { createContext, useContext, ReactNode, useMemo } from 'react';
 import { Fault, NewFaultData, Worker } from '@/lib/types';
 import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface FaultsContextType {
   faults: Fault[] | null;
@@ -53,7 +55,16 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       assignedTo: assignedWorker ? assignedWorker.id : '',
     };
     
-    addDocumentNonBlocking(faultsCollection, newFault);
+    addDoc(faultsCollection, newFault).catch(error => {
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: faultsCollection.path,
+          operation: 'create',
+          requestResourceData: newFault,
+        })
+      )
+    });
   };
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
