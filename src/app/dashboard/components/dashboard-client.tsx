@@ -515,6 +515,7 @@ export function DashboardClient({
               </DialogHeader>
               <div className="py-4 space-y-6 text-sm">
                 <div ref={actTemplateRef} className="space-y-4">
+                    <p className="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
                     <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {faultToSign.id}</h3>
                     <div className="flex justify-between">
                         <span>{faultToSign.address}</span>
@@ -533,7 +534,6 @@ export function DashboardClient({
                     <div className="grid grid-cols-2 gap-8 pt-6">
                         <div>
                             <p className="font-semibold">Vykdytojas:</p>
-                            <p className="font-bold">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
                             <p className="mt-2 font-medium">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</p>
                             <p className="mt-8 border-b border-foreground/50"></p>
                             <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
