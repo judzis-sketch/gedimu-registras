@@ -38,18 +38,18 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to employee data, allowing public read.
+     * @description Controls access to employee data, allowing public read and admin writes.
      * @path /employees/{employeeId}
      * @allow (get, list) Anyone can read employee data.
-     * @deny (create, update, delete) Write operations are disallowed.
-     * @principle Restricts write access to employee data while allowing public read access for task assignment.
+     * @allow (create, update, delete) Only administrators can manage employee records.
+     * @principle Restricts write access to employee data to admins while allowing public read.
      */
     match /employees/{employeeId} {
       allow get: if true;
       allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     function isSignedIn() {
@@ -62,6 +62,10 @@ service cloud.firestore {
 
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'admin@zarasubustas.lt';
     }
   }
 }
