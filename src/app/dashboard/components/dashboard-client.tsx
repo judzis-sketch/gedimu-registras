@@ -45,6 +45,9 @@ import { ToastAction } from "@/components/ui/toast";
 import { SignaturePad } from "@/components/signature-pad";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { DateRangePicker } from "@/components/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { addDays } from "date-fns";
 
 
 interface DashboardClientProps {
@@ -90,6 +93,10 @@ export function DashboardClient({
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const actTemplateRef = useRef<HTMLDivElement>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
 
 
   const statusChangeSubMenu = (fault: Fault) => (
@@ -299,12 +306,35 @@ export function DashboardClient({
     return workers.find((w) => w.id === fault.assignedTo);
   }
 
-  const displayedFaults = view === 'admin'
-    ? faults.filter(fault => statusFilter === 'all' || fault.status === statusFilter)
-    : faults.filter(fault => fault.assignedTo === workerId && fault.status !== 'completed');
+  const displayedFaults = faults.filter(fault => {
+    const statusMatch = statusFilter === 'all' || fault.status === statusFilter;
+    
+    if (view === 'worker') {
+        return fault.assignedTo === workerId && fault.status !== 'completed';
+    }
+
+    if (view === 'admin') {
+      const dateMatch = dateRange?.from && dateRange.to 
+        ? new Date(fault.createdAt) >= dateRange.from && new Date(fault.createdAt) <= dateRange.to
+        : true;
+      return statusMatch && dateMatch;
+    }
+
+    return false;
+  });
 
   const adminView = (
-     <Tabs defaultValue="all" onValueChange={(value) => setStatusFilter(value as Status | "all")}>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Ataskaitos pagal datą</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center gap-4">
+          <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+          {dateRange && <Button variant="outline" onClick={() => setDateRange(undefined)}>Išvalyti</Button>}
+        </CardContent>
+      </Card>
+      <Tabs defaultValue="all" onValueChange={(value) => setStatusFilter(value as Status | "all")}>
         <TabsList className="grid w-full grid-cols-5 mb-4">
           <TabsTrigger value="all">Visi</TabsTrigger>
           <TabsTrigger value="new">Nauji</TabsTrigger>
@@ -321,6 +351,7 @@ export function DashboardClient({
             </CardContent>
         </Card>
       </Tabs>
+    </div>
   );
 
   const workerView = (
@@ -353,7 +384,7 @@ export function DashboardClient({
             {displayedFaults.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
-                  {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktą filtrą gedimų nerasta."}
+                  {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
             ) : (
