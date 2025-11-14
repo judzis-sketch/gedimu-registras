@@ -280,9 +280,11 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     const ReactDOMClient = await import('react-dom/client');
     const root = ReactDOMClient.createRoot(tempActContainer);
 
+    const faultWithCompletionStatus = { ...currentFault, status: 'completed' as Status, updatedAt: new Date() };
+
     root.render(
         <ActTemplate
-            fault={currentFault}
+            fault={faultWithCompletionStatus}
             assignedWorker={getAssignedWorker(currentFault)}
             workerSignatureDataUrl={currentFault.workerSignature}
             customerSignatureDataUrl={signatureDataUrl}
