@@ -114,6 +114,23 @@ export function DashboardClient({
     return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
   
+  const statusChangeSubMenu = (fault: Fault) => (
+     <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Clock className="mr-2 h-4 w-4" />
+        <span>Keisti būseną</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+          <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
+              Vykdomas
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
+              Užbaigtas
+          </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+
   const displayedFaults = view === 'admin'
     ? faults.filter(fault => statusFilter === 'all' || fault.status === statusFilter)
     : faults.filter(fault => fault.assignedTo === workerId && fault.status !== 'completed');
@@ -149,23 +166,6 @@ export function DashboardClient({
       </Card>
   );
   
-  const statusChangeSubMenu = (fault: Fault) => (
-     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <Clock className="mr-2 h-4 w-4" />
-        <span>Keisti būseną</span>
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-          <DropdownMenuItem disabled={fault.status === 'in-progress'} onClick={() => handleUpdateStatus(fault.id, "in-progress")}>
-              Vykdomas
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={fault.status === 'completed'} onClick={() => handleUpdateStatus(fault.id, "completed")}>
-              Užbaigtas
-          </DropdownMenuItem>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-
   function renderTable() {
     return (
         <Table>
