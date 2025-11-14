@@ -297,7 +297,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     document.body.appendChild(tempActContainer);
 
     // We need to use createRoot for React 18
-    // @ts-ignore
     const ReactDOMClient = await import('react-dom/client');
     const root = ReactDOMClient.createRoot(tempActContainer);
 
@@ -385,7 +384,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
         
-        const img = new (await import('jspdf')).Image();
         const imgProps = pdf.getImageProperties(fault.actImageUrl);
 
         const imgWidth = pdfWidth - 20; 
