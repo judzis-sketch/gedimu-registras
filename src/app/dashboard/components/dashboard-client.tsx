@@ -348,7 +348,7 @@ export function DashboardClient({
     });
 
     const zip = new JSZip();
-    const faultsToDownload = displayedFaults.filter(f => f.status === 'completed');
+    const faultsToDownload = displayedFaults;
 
     for (const fault of faultsToDownload) {
         const blob = await generatePdfBlob(fault);
@@ -394,13 +394,12 @@ export function DashboardClient({
   }
 
   const displayedFaults = faults.filter(fault => {
-    const statusMatch = statusFilter === 'all' || fault.status === statusFilter;
-    
     if (view === 'worker') {
         return fault.assignedTo === workerId && fault.status !== 'completed';
     }
 
     if (view === 'admin') {
+      const statusMatch = statusFilter === 'all' || fault.status === statusFilter;
       const dateMatch = dateRange?.from && dateRange.to 
         ? new Date(fault.createdAt) >= dateRange.from && new Date(fault.createdAt) <= dateRange.to
         : true;
@@ -410,7 +409,7 @@ export function DashboardClient({
     return false;
   });
 
-  const downloadableActsCount = displayedFaults.filter(f => f.status === 'completed').length;
+  const downloadableActsCount = displayedFaults.length;
 
   const adminView = (
     <div className="space-y-4">
