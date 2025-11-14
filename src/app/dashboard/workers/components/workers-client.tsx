@@ -43,6 +43,8 @@ import { faultTypeTranslations } from "@/lib/utils";
 
 const workerFormSchema = z.object({
   name: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
+  email: z.string().email({ message: "Neteisingas el. pašto formatas." }),
+  password: z.string().min(8, { message: "Slaptažodis turi būti bent 8 simbolių ilgio." }),
   specialty: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "Reikia pasirinkti bent vieną specializaciją.",
   }),
@@ -57,6 +59,8 @@ export function WorkersClient() {
     resolver: zodResolver(workerFormSchema),
     defaultValues: {
       name: "",
+      email: "",
+      password: "",
       specialty: [],
     },
   });
@@ -101,6 +105,32 @@ export function WorkersClient() {
                           <FormLabel>Vardas ir Pavardė</FormLabel>
                           <FormControl>
                             <Input placeholder="Jonas Jonaitis" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>El. paštas</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="jonas@pavyzdys.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Slaptažodis</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -169,6 +199,7 @@ export function WorkersClient() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Vardas</TableHead>
+                <TableHead>El. paštas</TableHead>
                 <TableHead>Specializacija</TableHead>
                 <TableHead className="text-right">Veiksmai</TableHead>
               </TableRow>
@@ -178,6 +209,7 @@ export function WorkersClient() {
                 <TableRow key={worker.id}>
                   <TableCell className="font-medium">{worker.id}</TableCell>
                   <TableCell>{worker.name}</TableCell>
+                  <TableCell>{worker.email}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       {worker.specialty.map((spec) => (

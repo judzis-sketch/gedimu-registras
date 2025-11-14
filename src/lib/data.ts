@@ -1,9 +1,9 @@
 import type { Fault, Worker } from "./types";
 
 export const workers: Worker[] = [
-  { id: "worker-1", name: "Jonas Jonaitis", specialty: ["electricity", "general"] },
-  { id: "worker-2", name: "Petras Petraitis", specialty: ["plumbing"] },
-  { id: "worker-3", name: "Ona Onaitė", specialty: ["heating", "general"] },
+  { id: "worker-1", name: "Jonas Jonaitis", email: "jonas@zarasubustas.lt", password: "password123", specialty: ["electricity", "general"] },
+  { id: "worker-2", name: "Petras Petraitis", email: "petras@zarasubustas.lt", password: "password123", specialty: ["plumbing"] },
+  { id: "worker-3", name: "Ona Onaitė", email: "ona@zarasubustas.lt", password: "password123", specialty: ["heating", "general"] },
 ];
 
 export const faults: Omit<Fault, 'createdAt' | 'updatedAt'>[] = [
