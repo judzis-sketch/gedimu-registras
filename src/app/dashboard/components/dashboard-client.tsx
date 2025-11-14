@@ -82,6 +82,50 @@ const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
     return <>{formattedDate}</>;
 };
 
+const ActTemplate = ({ fault, assignedWorker, signatureDataUrl, innerRef }: { fault: Fault, assignedWorker: Worker | undefined, signatureDataUrl?: string, innerRef?: React.Ref<HTMLDivElement> }) => {
+  const assignedWorkerName = assignedWorker?.name || 'Nenurodytas';
+  
+  return (
+    <div ref={innerRef} className="space-y-4 text-sm bg-white p-6 text-black">
+      <p className="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
+      <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {fault.id}</h3>
+      <div className="flex justify-between">
+          <span>{fault.address}</span>
+          <span>{format(new Date(), 'yyyy-MM-dd')}</span>
+      </div>
+      <p>
+          Šis aktas patvirtina, kad specialistas <span className="font-semibold">{assignedWorkerName}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
+      </p>
+      <div className="p-2 border rounded-md bg-gray-100">
+          <p className="font-semibold">Registruotas gedimas:</p>
+          <p>{fault.description}</p>
+      </div>
+      <p>
+         Užsakovas <span className="font-semibold">{fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
+      </p>
+      <div className="grid grid-cols-2 gap-8 pt-6">
+          <div>
+              <p className="font-semibold">Vykdytojas:</p>
+              <p className="mt-2 font-medium">{assignedWorkerName}</p>
+              <p className="mt-8 border-b border-black"></p>
+              <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
+          </div>
+          <div>
+               <p className="font-semibold">Užsakovas:</p>
+               <p className="mt-2 font-medium">{fault.reporterName}</p>
+               {signatureDataUrl ? (
+                <img src={signatureDataUrl} width="200" height="100" alt="Kliento parašas" className="mt-2" />
+               ) : (
+                <p className="mt-8 border-b border-black"></p>
+               )}
+               <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
+          </div>
+      </div>
+    </div>
+  );
+};
+
+
 export function DashboardClient({
   view,
   workerId,
@@ -200,7 +244,7 @@ export function DashboardClient({
     }
 
     return `
-      <div class="space-y-4 text-sm" style="font-family: sans-serif; color: black;">
+      <div class="space-y-4 text-sm" style="font-family: sans-serif; color: black; background: white; padding: 2rem;">
         <p class="font-bold text-center">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
         <h3 class="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
         <div class="flex justify-between">
@@ -239,54 +283,88 @@ export function DashboardClient({
     const currentFault = faults.find(f => f.id === faultId);
     if (!currentFault) return;
 
-    const actHtml = getActHtml(currentFault, signatureDataUrl);
-    
-    let updatedFault: Fault | undefined;
-    setFaults(prevFaults =>
-      prevFaults.map(f => {
-        if (f.id === faultId) {
-          updatedFault = {
-              ...f,
-              status: "completed",
-              signature: actHtml,
-              updatedAt: new Date()
-            };
-          return updatedFault;
+    if (actTemplateRef.current) {
+        const canvas = await html2canvas(actTemplateRef.current, {
+            scale: 2,
+            useCORS: true,
+            onclone: (document) => {
+                const signatureImg = document.querySelector('#signature-image') as HTMLImageElement | null;
+                if(signatureImg) {
+                    signatureImg.style.display = 'block';
+                }
+            }
+        });
+        const actHtml = canvas.toDataURL("image/png");
+        
+        // This is a simplified approach, saving the image data URL as the "act".
+        // In a real app, you'd save the structured data and generate the view on demand.
+        // For PDF generation, we'll convert this image.
+        
+        let updatedFault: Fault | undefined;
+        setFaults(prevFaults =>
+        prevFaults.map(f => {
+            if (f.id === faultId) {
+            updatedFault = {
+                ...f,
+                status: "completed",
+                signature: actHtml, // Saving the generated image of the act
+                updatedAt: new Date()
+                };
+            return updatedFault;
+            }
+            return f;
+        })
+        );
+
+        setFaultToSign(null);
+
+        if (updatedFault) {
+        toast({
+            title: "Parašas išsaugotas ir aktas suformuotas!",
+            description: `Būsena pakeista į "Užbaigtas".`,
+            action: createMailToAction(updatedFault, statusConfig.completed.label),
+        });
         }
-        return f;
-      })
-    );
-
-    setFaultToSign(null);
-
-    if (updatedFault) {
-       toast({
-         title: "Parašas išsaugotas ir aktas suformuotas!",
-         description: `Būsena pakeista į "Užbaigtas".`,
-         action: createMailToAction(updatedFault, statusConfig.completed.label),
-       });
     }
   };
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
-    const actHtml = fault.signature || getActHtml(fault);
+     const elementToCapture = document.createElement('div');
+     elementToCapture.style.position = 'fixed';
+     elementToCapture.style.left = '-9999px';
+     elementToCapture.style.width = '800px';
+     elementToCapture.style.backgroundColor = 'white';
+     document.body.appendChild(elementToCapture);
 
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.width = '800px';
-    container.style.padding = '20px';
-    container.style.backgroundColor = 'white';
-    container.style.color = 'black';
-    container.innerHTML = actHtml;
-    document.body.appendChild(container);
+     let canvas: HTMLCanvasElement;
 
-    try {
-        const canvas = await html2canvas(container, {
+     if (fault.signature?.startsWith('data:image/png;base64,')) {
+         // It's a signature act image, just draw it on canvas
+         canvas = await new Promise((resolve) => {
+             const img = new window.Image();
+             img.src = fault.signature!;
+             img.onload = () => {
+                 const cvs = document.createElement('canvas');
+                 cvs.width = img.width;
+                 cvs.height = img.height;
+                 const ctx = cvs.getContext('2d');
+                 ctx?.drawImage(img, 0, 0);
+                 resolve(cvs);
+             };
+         });
+     } else {
+        // It's an unsigned fault, render the template
+        const actHtml = getActHtml(fault);
+        elementToCapture.innerHTML = actHtml;
+        canvas = await html2canvas(elementToCapture, {
             scale: 2,
             useCORS: true,
         });
+     }
+     
+     document.body.removeChild(elementToCapture);
 
+    try {
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -296,7 +374,7 @@ export function DashboardClient({
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth - 20; // with some margin
+        const imgWidth = pdfWidth - 20; 
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         
         let finalHeight = imgHeight;
@@ -321,8 +399,6 @@ export function DashboardClient({
             description: "Nepavyko sugeneruoti PDF failo."
         });
         return null;
-    } finally {
-        document.body.removeChild(container);
     }
   }
 
@@ -620,11 +696,10 @@ export function DashboardClient({
 
                 {selectedFault.signature && (
                   <div className="space-y-2 pt-4">
-                    <h3 className="font-semibold">Atliktų darbų aktas ir kliento parašas:</h3>
-                    <div
-                      className="rounded-md border bg-gray-100 dark:bg-gray-800 p-4 text-sm"
-                      dangerouslySetInnerHTML={{ __html: selectedFault.signature }}
-                    />
+                    <h3 className="font-semibold">Atliktų darbų aktas:</h3>
+                     <div className="rounded-md border bg-gray-100 dark:bg-gray-800 p-4">
+                        <img src={selectedFault.signature} alt="Pasirašytas aktas" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -644,13 +719,30 @@ export function DashboardClient({
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4 space-y-6 text-sm">
-                <div ref={actTemplateRef}>
-                  {/* This div is now only for potential reference, act is built in a function */}
+                <div className="border rounded-md">
+                   <ActTemplate 
+                    fault={faultToSign} 
+                    assignedWorker={getAssignedWorker(faultToSign)}
+                    innerRef={actTemplateRef} 
+                   />
                 </div>
-                <div dangerouslySetInnerHTML={{ __html: getActHtml(faultToSign) }} />
                 <div>
                   <p className="text-center font-medium mb-2">Užsakovo parašas:</p>
-                  <SignaturePad onSave={(signature) => handleSaveSignature(faultToSign.id, signature)} />
+                  <SignaturePad onSave={(signature) => {
+                    const actEl = actTemplateRef.current;
+                    if (actEl) {
+                        const signaturePlaceholder = actEl.querySelector('.text-xs.text-center + div');
+                        const signatureImg = document.createElement('img');
+                        signatureImg.src = signature;
+                        signatureImg.alt = "Kliento parašas";
+                        signatureImg.className = "mt-2";
+                        signatureImg.id = "signature-image";
+                        signatureImg.style.display = 'none'; // hide for now
+                        signaturePlaceholder?.appendChild(signatureImg);
+
+                        handleSaveSignature(faultToSign.id, signature);
+                    }
+                  }} />
                 </div>
               </div>
             </>
