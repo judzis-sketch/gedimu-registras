@@ -702,6 +702,12 @@ a.click();
                       </DropdownMenuItem>
                        {view === 'admin' && (
                          <>
+                            {fault.status === 'completed' && (
+                                <DropdownMenuItem onClick={() => openNotificationEditor(fault, 'Užbaigtas')}>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    <span>Siųsti atsakymą</span>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                                 disabled={fault.status !== 'in-progress' || !!fault.workerSignature}
                                 onClick={() => setFaultToSign({fault: fault, type: 'worker'})}
