@@ -28,13 +28,13 @@ import { useFaults } from "@/context/faults-context";
 import { FaultType, NewFaultData } from "@/lib/types";
 
 const phoneRegex = new RegExp(
-  /^([+]?[\s0-9]+)?(\d{3}|[(]?[0-9]+[)])?([-]?[\s]?[0-9])+$/
+  /^(\+370|8)[\s-]?(\d{3})[\s-]?(\d{2})[\s-]?(\d{3})$/
 );
 
 const formSchema = z.object({
   reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  reporterPhone: z.string().regex(phoneRegex, 'Neteisingas telefono numerio formatas.').min(8, { message: "Telefono numeris turi būti bent 8 simbolių ilgio." }),
+  reporterPhone: z.string().regex(phoneRegex, 'Neteisingas telefono numerio formatas. Pvz: +37061234567 arba 861234567'),
   address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
     errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
