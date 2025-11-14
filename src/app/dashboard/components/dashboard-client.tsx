@@ -461,27 +461,22 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
-    
-    let idToFilterBy: string | undefined = undefined;
+
+    let filteredFaults = faults;
+
     if (view === 'worker') {
-        idToFilterBy = workerId;
+        filteredFaults = faults.filter(fault => fault.assignedTo === user?.uid && fault.status !== 'completed');
+    } else if (view === 'admin') {
+      filteredFaults = faults.filter(fault => {
+        const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
+        const dateMatch = dateRange?.from && dateRange.to && fault.createdAt
+          ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
+          : true;
+        return statusMatch && dateMatch;
+      });
     }
 
-    return faults.filter(fault => {
-        if (view === 'worker') {
-            return fault.assignedTo === idToFilterBy && fault.status !== 'completed';
-        }
-
-        if (view === 'admin') {
-          const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-          const dateMatch = dateRange?.from && dateRange.to && fault.createdAt
-            ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
-            : true;
-          return statusMatch && dateMatch;
-        }
-
-        return false;
-      }).sort((a, b) => {
+    return filteredFaults.sort((a, b) => {
         if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
           const dateA = a[sortKey]?.toDate ? a[sortKey].toDate().getTime() : 0;
           const dateB = b[sortKey]?.toDate ? b[sortKey].toDate().getTime() : 0;
