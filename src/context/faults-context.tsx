@@ -18,14 +18,13 @@ const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
-  const faultsCollection = useMemoFirebase(() => collection(firestore, 'issues'), [firestore]);
+  const faultsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'issues') : null, [firestore]);
   const { data: faults, isLoading } = useCollection<Fault>(faultsCollection);
   
   const { workers } = useWorkers();
 
   const addFault = (faultData: NewFaultData) => {
     if (!faultsCollection) return;
-    if (!workers) return;
 
     const newFaultBase = {
       ...faultData,
@@ -33,23 +32,25 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       updatedAt: serverTimestamp(),
     };
 
-    const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
     let assignedWorker: Worker | undefined;
+    if (workers && workers.length > 0) {
+      const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
 
-    if (suitableWorkers.length > 0) {
-      const workerTasksCount = suitableWorkers.map(worker => ({
-        worker,
-        taskCount: (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length
-      }));
+      if (suitableWorkers.length > 0) {
+        const workerTasksCount = suitableWorkers.map(worker => ({
+          worker,
+          taskCount: (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length
+        }));
 
-      workerTasksCount.sort((a, b) => a.taskCount - b.taskCount);
-      assignedWorker = workerTasksCount[0].worker;
+        workerTasksCount.sort((a, b) => a.taskCount - b.taskCount);
+        assignedWorker = workerTasksCount[0].worker;
+      }
     }
 
     const newFault: Omit<Fault, 'id'> = {
       ...newFaultBase,
       status: assignedWorker ? 'assigned' : 'new',
-      assignedTo: assignedWorker?.id || '',
+      assignedTo: assignedWorker ? assignedWorker.id : '',
     };
     
     addDocumentNonBlocking(faultsCollection, newFault);
