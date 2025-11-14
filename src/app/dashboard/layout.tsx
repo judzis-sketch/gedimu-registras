@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   SidebarProvider,
   Sidebar,
@@ -16,9 +16,15 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons";
-import { LayoutDashboard, User, Wrench } from "lucide-react";
+import { LayoutDashboard, User, Wrench, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import React from "react";
+import { workers } from "@/lib/data";
+
+const MOCK_LOGGED_IN_WORKER_ID = "worker-1";
+
 
 export default function DashboardLayout({
   children,
@@ -26,6 +32,40 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const role = searchParams.get("role") || "user";
+
+  const handleLogout = () => {
+    router.push("/");
+  };
+  
+  const worker = workers.find(w => w.id === MOCK_LOGGED_IN_WORKER_ID);
+
+  const userConfig = {
+    admin: {
+      name: "Admin",
+      role: "Sistemos valdytojas",
+      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+    },
+    worker: {
+      name: worker?.name || "Darbuotojas",
+      role: "Specialistas",
+      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704e",
+    },
+    user: {
+      name: "Vartotojas",
+      role: "Pranešėjas",
+      avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f",
+    }
+  }[role as "admin" | "worker" | "user"] || { name: "Vartotojas", role: "Pranešėjas", avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f" };
+
+  let title = "Gedimų Registras";
+  if (role === 'admin') {
+    title = "Visos gedimų užklausos";
+  } else if (role === 'worker') {
+    title = "Mano užduotys";
+  }
 
   return (
     <SidebarProvider>
@@ -40,30 +80,34 @@ export default function DashboardLayout({
             </div>
           </SidebarHeader>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === "/dashboard"}
-                tooltip="Visos užklausos"
-              >
-                <Link href="/dashboard">
-                  <LayoutDashboard />
-                  <span>Visos užklausos</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === "/dashboard/my-tasks"}
-                tooltip="Mano užduotys"
-              >
-                <Link href="/dashboard/my-tasks">
-                  <Wrench />
-                  <span>Mano užduotys</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {role === 'admin' && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard"}
+                  tooltip="Visos užklausos"
+                >
+                  <Link href={{ pathname: "/dashboard", query: { role: 'admin' } }}>
+                    <LayoutDashboard />
+                    <span>Visos užklausos</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {(role === 'admin' || role === 'worker') && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/dashboard/my-tasks"}
+                  tooltip="Mano užduotys"
+                >
+                  <Link href={{ pathname: "/dashboard/my-tasks", query: { role: role } }}>
+                    <Wrench />
+                    <span>Mano užduotys</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
 
@@ -72,17 +116,22 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between p-2">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" />
-                <AvatarFallback>A</AvatarFallback>
+                <AvatarImage src={userConfig.avatar} />
+                <AvatarFallback>{userConfig.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">Admin</span>
+                <span className="text-sm font-semibold">{userConfig.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  Sistemos valdytojas
+                  {userConfig.role}
                 </span>
               </div>
             </div>
-             <ThemeToggle />
+             <div className="flex items-center">
+                <Button variant="ghost" size="icon" onClick={handleLogout} title="Atsijungti">
+                    <LogOut className="h-4 w-4" />
+                </Button>
+                <ThemeToggle />
+            </div>
           </div>
         </SidebarFooter>
       </Sidebar>
@@ -91,7 +140,7 @@ export default function DashboardLayout({
           <SidebarTrigger className="md:hidden" />
           <div className="flex-1">
              <h1 className="text-lg font-semibold md:text-xl font-headline">
-              {pathname === "/dashboard/my-tasks" ? "Mano užduotys" : "Visos gedimų užklausos"}
+              {title}
             </h1>
           </div>
         </header>

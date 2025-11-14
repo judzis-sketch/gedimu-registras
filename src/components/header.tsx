@@ -12,7 +12,7 @@ export function Header() {
         </Link>
         <nav className="flex items-center gap-4">
           <Button asChild>
-            <Link href="/dashboard">Valdymo Panelė</Link>
+            <Link href="/login">Prisijungti</Link>
           </Button>
         </nav>
       </div>
