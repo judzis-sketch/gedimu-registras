@@ -91,7 +91,7 @@ const ActTemplate = ({ fault, assignedWorker, signatureDataUrl, innerRef }: { fa
       <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {fault.id}</h3>
       <div className="flex justify-between">
           <span>{fault.address}</span>
-          <span>{format(new Date(), 'yyyy-MM-dd')}</span>
+          <span>{format(new Date(fault.updatedAt), 'yyyy-MM-dd')}</span>
       </div>
       <p>
           Šis aktas patvirtina, kad specialistas <span className="font-semibold">{assignedWorkerName}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
@@ -313,7 +313,7 @@ export function DashboardClient({
           <h3 style="font-size: 1.125rem; font-weight: bold; text-align: center;">ATLIKTŲ DARBŲ AKTAS Nr. ${fault.id}</h3>
           <div style="display: flex; justify-content: space-between;">
               <span>${fault.address}</span>
-              <span>${format(new Date(), 'yyyy-MM-dd')}</span>
+              <span>${format(new Date(fault.updatedAt), 'yyyy-MM-dd')}</span>
           </div>
           <p>
               Šis aktas patvirtina, kad specialistas <span style="font-weight: 600;">${getAssignedWorker(fault)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
@@ -734,3 +734,5 @@ export function DashboardClient({
     </>
   );
 }
+
+    
