@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   Table,
   TableBody,
@@ -29,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -40,6 +41,7 @@ import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToastAction } from "@/components/ui/toast";
+import { SignaturePad } from "@/components/signature-pad";
 
 interface DashboardClientProps {
   initialWorkers: Worker[];
@@ -81,6 +83,7 @@ export function DashboardClient({
   const { faults, setFaults } = useFaults();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
+  const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
@@ -173,6 +176,17 @@ export function DashboardClient({
      }
 
      setIsUpdating(null);
+  };
+  
+  const handleSaveSignature = (faultId: string, signature: string) => {
+    setFaults(prevFaults => 
+      prevFaults.map(f => f.id === faultId ? { ...f, signature } : f)
+    );
+    setFaultToSign(null);
+    toast({
+      title: "Parašas išsaugotas",
+      description: "Atliktų darbų aktas sėkmingai pasirašytas.",
+    });
   };
 
   const getWorkerName = (workerId?: string) => {
@@ -276,6 +290,13 @@ export function DashboardClient({
                           <Info className="mr-2 h-4 w-4" />
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
+                       <DropdownMenuItem
+                        disabled={fault.status !== 'completed' || !!fault.signature}
+                        onClick={() => setFaultToSign(fault)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Pasirašyti aktą</span>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {view === "admin" && (
                         <>
@@ -355,11 +376,39 @@ export function DashboardClient({
                         </span>
                       </div>
                 </div>
+
+                {selectedFault.signature && (
+                  <div className="space-y-2 pt-4">
+                    <h3 className="font-semibold">Kliento parašas:</h3>
+                    <div className="rounded-md border bg-gray-100 dark:bg-gray-800 p-2 flex justify-center">
+                       <Image src={selectedFault.signature} alt="Kliento parašas" width={200} height={100} />
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!faultToSign} onOpenChange={(open) => !open && setFaultToSign(null)}>
+        <DialogContent className="sm:max-w-md">
+          {faultToSign && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Atliktų darbų akto pasirašymas</DialogTitle>
+                <DialogDescription>
+                  Užsakovas: {faultToSign.reporterName}. Pasirašykite žemiau.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <SignaturePad onSave={(signature) => handleSaveSignature(faultToSign.id, signature)} />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </>
   );
 }

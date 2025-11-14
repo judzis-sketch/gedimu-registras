@@ -22,4 +22,5 @@ export interface Fault extends NewFaultData {
   createdAt: Date;
   assignedTo?: string; // Worker ID
   updatedAt: Date;
+  signature?: string; // Base64 encoded image
 }
