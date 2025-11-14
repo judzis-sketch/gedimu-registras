@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
 import { NewWorkerData, Worker } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
@@ -25,7 +25,7 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
   const workersCollection = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
   const { data: workers, isLoading } = useCollection<Worker>(workersCollection);
 
-  const addWorker = async (workerData: NewWorkerData) => {
+  const addWorker = useCallback(async (workerData: NewWorkerData) => {
     if (!firestore || !auth || !workerData.password) {
       throw new Error("Firestore, Auth, or password not available.");
     }
@@ -42,23 +42,23 @@ export const WorkersProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error creating worker:", error);
         throw error; // Re-throw to be handled by the form
     }
-  };
+  }, [firestore, auth]);
   
-  const updateWorker = (workerId: string, workerData: Partial<NewWorkerData>) => {
+  const updateWorker = useCallback((workerId: string, workerData: Partial<NewWorkerData>) => {
     if (!firestore) return;
     const workerRef = doc(firestore, 'employees', workerId);
     // Password should not be part of the update data for a worker profile
     const { password, ...updateData } = workerData;
     setDocumentNonBlocking(workerRef, updateData, { merge: true });
-  };
+  }, [firestore]);
 
-  const deleteWorker = (workerId: string) => {
+  const deleteWorker = useCallback((workerId: string) => {
     // Note: This only deletes the Firestore document, not the Firebase Auth user.
     // Deleting the auth user requires admin privileges, typically via Firebase Functions.
     if (!firestore) return;
     const workerRef = doc(firestore, 'employees', workerId);
     deleteDocumentNonBlocking(workerRef);
-  };
+  }, [firestore]);
 
   const contextValue = useMemo(() => ({
     workers,
