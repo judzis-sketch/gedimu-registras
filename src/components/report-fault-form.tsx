@@ -34,7 +34,7 @@ const phoneRegex = new RegExp(
 const formSchema = z.object({
   reporterName: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  reporterPhone: z.string().regex(/^(\+3706)\d{7}$/, 'Neteisingas telefono numerio formatas. Numeris turi prasidėti su +370 ir turėti 11 skaitmenų, pvz., +37061234567.'),
+  reporterPhone: z.string().regex(/^(\+370|8)\d{8}$/, 'Neteisingas telefono numerio formatas. Turi prasidėti su +370 arba 8 ir turėti 8 skaitmenis po prefikso.'),
   address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
     errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
@@ -127,7 +127,7 @@ export function ReportFaultForm() {
                 <FormControl>
                   <Input
                     type="tel"
-                    placeholder="+37061234567"
+                    placeholder="+37061234567 arba 861234567"
                     {...field}
                     onInput={(e) => {
                       const target = e.target as HTMLInputElement;
