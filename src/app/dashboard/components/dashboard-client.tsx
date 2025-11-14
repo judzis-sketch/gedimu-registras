@@ -9,6 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +29,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -48,10 +55,11 @@ const statusConfig: Record<
   completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white" },
 };
 
-const FormattedDate = ({ date }: { date: Date | string }) => {
+const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
     const [formattedDate, setFormattedDate] = useState("");
 
     useEffect(() => {
+        if (!date) return;
         const dateObj = typeof date === 'string' ? new Date(date) : date;
         setFormattedDate(format(dateObj, 'yyyy-MM-dd HH:mm', { locale: lt }));
     }, [date]);
@@ -70,6 +78,7 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const { faults, setFaults } = useFaults();
   const { toast } = useToast();
+  const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
 
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setFaults((prevFaults) =>
@@ -108,6 +117,7 @@ export function DashboardClient({
     : faults.filter(fault => fault.assignedTo === workerId && fault.status !== 'completed');
 
   return (
+    <>
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">
@@ -166,7 +176,10 @@ export function DashboardClient({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Veiksmai</DropdownMenuLabel>
-                        <DropdownMenuItem>Peržiūrėti informaciją</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedFault(fault)}>
+                            <Info className="mr-2 h-4 w-4" />
+                            Peržiūrėti informaciją
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {view === "admin" && (
                            <DropdownMenuSub>
@@ -208,5 +221,53 @@ export function DashboardClient({
           </Table>
         </CardContent>
       </Card>
+      
+      <Dialog open={!!selectedFault} onOpenChange={(open) => !open && setSelectedFault(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {selectedFault && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-headline">Gedimo ID: {selectedFault.id}</DialogTitle>
+                <DialogDescription>
+                  Išsami informacija apie užregistruotą gedimą
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                 <div className="flex items-start gap-4">
+                    <div className="bg-primary/20 text-primary p-3 rounded-full">
+                        <FaultTypeIcon type={selectedFault.type} className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Pilnas aprašymas</h3>
+                      <p className="text-muted-foreground text-sm">{selectedFault.description}</p>
+                    </div>
+                  </div>
+
+                <div className="space-y-3">
+                     <div className="flex items-center gap-3">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{selectedFault.address}</span>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{selectedFault.reporterName}</span>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{selectedFault.reporterEmail}</span>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                            Sukurta: <FormattedDate date={selectedFault.createdAt} />
+                        </span>
+                     </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
