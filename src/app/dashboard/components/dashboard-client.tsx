@@ -39,7 +39,6 @@ import { format } from "date-fns";
 import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateNotification } from "@/ai/flows/generate-notification-flow";
 
 interface DashboardClientProps {
   initialWorkers: Worker[];
@@ -101,100 +100,41 @@ export function DashboardClient({
    </DropdownMenuSub>
  );
 
-  const handleAssignWorker = async (faultId: string, workerId: string) => {
+  const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
-    let faultToUpdate: Fault | undefined;
-
     setFaults((prevFaults) =>
       prevFaults.map((fault) => {
         if (fault.id === faultId) {
-          faultToUpdate = { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
-          return faultToUpdate;
+          return { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
         }
         return fault;
       })
     );
 
-    if (faultToUpdate) {
-        const worker = initialWorkers.find(w => w.id === workerId);
-        try {
-            const notification = await generateNotification({
-                faultId: faultToUpdate.id,
-                faultDescription: faultToUpdate.description,
-                reporterName: faultToUpdate.reporterName,
-                newStatus: 'priskirtas',
-                details: `Gedimą tvarkys specialistas ${worker?.name}.`
-            });
-
-            toast({
-              title: "Specialistas priskirtas ir vartotojas informuotas",
-              description: (
-                <div className="text-xs">
-                    <p className="font-bold">Laiško tema:</p>
-                    <p>{notification.subject}</p>
-                    <p className="font-bold mt-2">Laiško turinys:</p>
-                    <p className="whitespace-pre-wrap">{notification.body}</p>
-                </div>
-              ),
-              duration: 10000,
-            });
-        } catch (error) {
-            console.error("Failed to generate notification:", error);
-            toast({
-                variant: "destructive",
-                title: "Klaida",
-                description: "Nepavyko sugeneruoti pranešimo vartotojui."
-            })
-        }
-    }
+    toast({
+      title: "Specialistas priskirtas",
+      description: "Vartotojas informuotas apie būsenos pasikeitimą.",
+    });
+    
     setIsUpdating(null);
   };
 
-  const handleUpdateStatus = async (faultId: string, status: Status) => {
+  const handleUpdateStatus = (faultId: string, status: Status) => {
     setIsUpdating(faultId);
-    let faultToUpdate: Fault | undefined;
-
     setFaults((prevFaults) =>
       prevFaults.map((fault) => {
         if (fault.id === faultId) {
-            faultToUpdate = { ...fault, status: status, updatedAt: new Date() };
-            return faultToUpdate;
+          return { ...fault, status: status, updatedAt: new Date() };
         }
         return fault;
       })
     );
 
-    if (faultToUpdate) {
-        try {
-             const notification = await generateNotification({
-                faultId: faultToUpdate.id,
-                faultDescription: faultToUpdate.description,
-                reporterName: faultToUpdate.reporterName,
-                newStatus: statusConfig[status].label,
-                details: `Jūsų gedimo ${faultId} būsena buvo atnaujinta.`
-            });
-             toast({
-                title: "Būsena atnaujinta ir vartotojas informuotas",
-                description: (
-                <div className="text-xs">
-                    <p className="font-bold">Laiško tema:</p>
-                    <p>{notification.subject}</p>
-                    <p className="font-bold mt-2">Laiško turinys:</p>
-                    <p className="whitespace-pre-wrap">{notification.body}</p>
-                </div>
-                ),
-                duration: 10000,
-            });
+     toast({
+      title: `Būsena pakeista į "${statusConfig[status].label}"`,
+      description: "Vartotojas informuotas apie būsenos pasikeitimą.",
+    });
 
-        } catch (error) {
-            console.error("Failed to generate notification:", error);
-             toast({
-                variant: "destructive",
-                title: "Klaida",
-                description: "Nepavyko sugeneruoti pranešimo vartotojui."
-            })
-        }
-    }
      setIsUpdating(null);
   };
 
