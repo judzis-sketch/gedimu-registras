@@ -327,7 +327,7 @@ export function DashboardClient({
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg">Pilnas aprašymas</h3>
-                      <p className="text-muted-foreground text-sm">{selectedFault.description}</p>
+                      <p className="text-muted-foreground text-base">{selectedFault.description}</p>
                     </div>
                   </div>
 
