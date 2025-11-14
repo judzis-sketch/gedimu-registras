@@ -135,7 +135,7 @@ export function DashboardClient({
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("new");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const actTemplateRef = useRef<HTMLDivElement>(null);
