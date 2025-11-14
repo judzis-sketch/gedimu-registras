@@ -22,7 +22,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const firestore = useFirestore();
   const { user } = useUser();
   const searchParams = useSearchParams();
-  const view = searchParams.get('view') || 'admin';
+  const view = searchParams.get('view');
   
   const faultsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -34,8 +34,8 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
         return faultsCollectionRef;
     }
 
-    // For any other user (or admin viewing "My Tasks"), filter by their UID.
-    return query(faultsCollectionRef, where('assignedTo', '==', user.uid));
+    // For any worker (or admin viewing "My Tasks"), filter by their UID for non-completed tasks.
+    return query(faultsCollectionRef, where('assignedTo', '==', user.uid), where('status', '!=', 'completed'));
   }, [firestore, user, view]);
 
 
