@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "hero-image",
-      "description": "A person fixing something, representing repair services.",
-      "imageUrl": "https://images.unsplash.com/photo-1625047509252-ab38fb5c7343?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxyZXBhaXIlMjBzZXJ2aWNlfGVufDB8fHx8MTc2MzEwMzc3OHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "repair service"
+      "description": "Modern apartment building exterior, representing property management.",
+      "imageUrl": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhcGFydG1lbnQlMjBidWlsZGluZ3xlbnwwfHx8fDE3NjM3NjI4MTd8MA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "apartment building"
     }
   ]
 }

@@ -29,11 +29,11 @@ export default function Home() {
           />
           <div className="relative z-10 flex flex-col items-center justify-center h-full text-center space-y-4 bg-black/50 p-4">
             <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tight">
-              Pastebėjote gedimą? Praneškite mums!
+              Profesionali daugiabučių namų priežiūra
             </h1>
             <p className="max-w-2xl text-lg md:text-xl text-primary-foreground/90">
-              Paprastas ir greitas būdas registruoti komunalinių paslaugų gedimus
-              ir stebėti jų tvarkymo eigą.
+              Patogus būdas gyventojams pranešti apie problemas, o namo
+              administratoriui – efektyviai jas spręsti.
             </p>
           </div>
         </section>
@@ -59,11 +59,11 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold font-headline">
-                        1. Užregistruokite gedimą
+                        1. Praneškite apie problemą
                       </h3>
                       <p className="text-muted-foreground">
                         Užpildykite formą, pateikdami visą reikiamą informaciją
-                        apie gedimą.
+                        apie gedimą ar kitą problemą.
                       </p>
                     </div>
                   </li>
@@ -73,11 +73,11 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold font-headline">
-                        2. Priskiriame specialistą
+                        2. Paskiriame atsakingą asmenį
                       </h3>
                       <p className="text-muted-foreground">
-                        Mūsų administratorius įvertins užklausą ir priskirs ją
-                        tinkamam darbuotojui.
+                        Administratorius įvertins užklausą ir priskirs ją
+                        tinkamam specialistui.
                       </p>
                     </div>
                   </li>
@@ -87,7 +87,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold font-headline">
-                        3. Darbas atliktas!
+                        3. Problema išspręsta!
                       </h3>
                       <p className="text-muted-foreground">
                         Specialistas sutvarkys gedimą ir pažymės sistemoje, kad
@@ -105,7 +105,7 @@ export default function Home() {
                     </CardTitle>
                     <CardDescription>
                       Užpildykite žemiau esančią formą ir mes kuo greičiau
-                      susisieksime.
+                      reaguosime.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
