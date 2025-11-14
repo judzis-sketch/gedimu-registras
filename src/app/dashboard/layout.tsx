@@ -128,9 +128,9 @@ function DashboardLayoutContent({
     },
   }[role as "admin" | "worker"] || { name: "Vartotojas", role: "Pranešėjas", avatar: "https://i.pravatar.cc/150?u=a042581f4e29026704f" };
 
-  let title = "Gedimų Registras";
+  let title = "Autobusų Tvarkaraštis";
   if (role === 'admin' && pathname === '/dashboard') {
-    title = "Visos gedimų užklausos";
+    title = "Visos užklausos";
   } else if (role === 'admin' && pathname === '/dashboard/workers') {
     title = "Darbuotojų valdymas";
   } else if (role === 'admin' && pathname === '/dashboard/forbidden-words') {
@@ -154,7 +154,7 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <Logo className="size-7 text-primary" />
               <span className="font-headline text-lg font-semibold">
-                Gedimų Registras
+                Autobusų Tvarkaraštis
               </span>
             </div>
           </SidebarHeader>

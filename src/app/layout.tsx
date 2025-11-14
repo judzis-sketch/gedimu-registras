@@ -5,8 +5,8 @@ import "./globals.css";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: "Gedimų Registras",
-  description: "Gedimų registravimo platforma",
+  title: "Autobusų Tvarkaraštis",
+  description: "Autobusų tvarkaraščių platforma",
 };
 
 export default function RootLayout({
