@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -59,12 +59,12 @@ interface DashboardClientProps {
 
 const statusConfig: Record<
   Status,
-  { label: string; color: "default" | "secondary" | "destructive" | "outline"; className: string }
+  { label: string; color: "default" | "secondary" | "destructive" | "outline"; className: string, ringClassName: string; icon: React.ElementType }
 > = {
-  new: { label: "Naujas", color: "default", className: "bg-blue-500 text-white" },
-  assigned: { label: "Priskirtas", color: "secondary", className: "bg-yellow-500 text-white" },
-  "in-progress": { label: "Vykdomas", color: "secondary", className: "bg-orange-500 text-white" },
-  completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white" },
+  new: { label: "Naujas", color: "default", className: "bg-blue-500 text-white", ringClassName: "ring-blue-500", icon: AlertCircle },
+  assigned: { label: "Priskirtas", color: "secondary", className: "bg-yellow-500 text-white", ringClassName: "ring-yellow-500", icon: ListTodo },
+  "in-progress": { label: "Vykdomas", color: "secondary", className: "bg-orange-500 text-white", ringClassName: "ring-orange-500", icon: Wrench },
+  completed: { label: "Užbaigtas", color: "outline", className: "bg-green-600 text-white", ringClassName: "ring-green-600", icon: CheckCircle },
 };
 
 const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
@@ -517,29 +517,39 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
   });
 
   const downloadableActsCount = displayedFaults.length;
-  const newFaultsCount = faults.filter(fault => fault.status === 'new').length;
+  
+  const statusCounts = {
+    new: faults.filter(fault => fault.status === 'new').length,
+    assigned: faults.filter(fault => fault.status === 'assigned').length,
+    'in-progress': faults.filter(fault => fault.status === 'in-progress').length,
+    completed: faults.filter(fault => fault.status === 'completed').length
+  };
 
   const adminView = (
     <div className="space-y-4">
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card
-            isClickable={true}
-            onClick={() => setStatusFilter("new")}
-            className={cn(statusFilter === 'new' && 'ring-2 ring-primary')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Nauji gedimai
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{newFaultsCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Gedimai, laukiantys priskyrimo
-            </p>
-          </CardContent>
-        </Card>
+        {(Object.keys(statusConfig) as Status[]).map((status) => {
+          const config = statusConfig[status];
+          const Icon = config.icon;
+          return (
+            <Card
+              key={status}
+              isClickable={true}
+              onClick={() => setStatusFilter(status)}
+              className={cn('ring-2 ring-transparent', statusFilter === status && config.ringClassName)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {config.label}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{statusCounts[status]}</div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       <Card>
@@ -797,3 +807,5 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     </>
   );
 }
+
+    
