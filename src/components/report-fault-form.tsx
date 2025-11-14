@@ -32,7 +32,7 @@ const formSchema = z.object({
   reporterEmail: z.string().email({ message: "Neteisingas el. pašto formatas." }),
   address: z.string().min(5, { message: "Adresas turi būti bent 5 simbolių ilgio." }),
   type: z.enum(["electricity", "plumbing", "heating", "general"], {
-    required_error: "Prašome pasirinkti gedimo tipą.",
+    errorMap: () => ({ message: "Prašome pasirinkti gedimo tipą." }),
   }),
   description: z.string().min(10, { message: "Aprašymas turi būti bent 10 simbolių ilgio." }).max(500, { message: "Aprašymas negali viršyti 500 simbolių." }),
 });
@@ -136,7 +136,7 @@ export function ReportFaultForm() {
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Pasirinkite gedimo tipą" />
-                    </Trigger>
+                    </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {(Object.keys(faultTypeTranslations) as FaultType[]).map((key) => (
