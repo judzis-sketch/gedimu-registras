@@ -290,33 +290,36 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     if (!currentFault || !currentFault.workerSignature) return;
 
     if (actTemplateRef.current) {
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.innerHTML = `
-            <img src="${currentFault.workerSignature}" id="workerSig" />
-            <img src="${signatureDataUrl}" id="customerSig" />
-        `;
-        document.body.appendChild(tempDiv);
-        
-        const onClone = (doc: Document) => {
-            const workerImg = doc.querySelector('img[alt="Vykdytojo parašas"]') as HTMLImageElement | null;
-            if (workerImg && currentFault.workerSignature) {
-                workerImg.src = currentFault.workerSignature;
-            }
-            const customerImg = doc.querySelector('img[alt="Užsakovo parašas"]') as HTMLImageElement | null;
-            if (customerImg) {
-                customerImg.src = signatureDataUrl;
-            }
-        };
+        // Temporarily render the full component to capture it
+        const tempRenderDiv = document.createElement('div');
+        tempRenderDiv.style.position = 'absolute';
+        tempRenderDiv.style.left = '-9999px';
+        tempRenderDiv.style.width = '800px';
 
-        const canvas = await html2canvas(actTemplateRef.current, {
+        const ReactDOMClient = await import('react-dom/client');
+        const root = ReactDOMClient.createRoot(tempRenderDiv);
+        
+        document.body.appendChild(tempRenderDiv);
+
+        root.render(
+            <ActTemplate 
+                fault={currentFault} 
+                assignedWorker={getAssignedWorker(currentFault)}
+                workerSignatureDataUrl={currentFault.workerSignature}
+                customerSignatureDataUrl={signatureDataUrl}
+            />
+        );
+
+        await new Promise(resolve => setTimeout(resolve, 500)); // wait for images
+
+        const canvas = await html2canvas(tempRenderDiv, {
             scale: 2,
             useCORS: true,
-            onclone: onClone,
         });
         
-        document.body.removeChild(tempDiv);
+        document.body.removeChild(tempRenderDiv);
+        root.unmount();
+        
         const actImageUrl = canvas.toDataURL("image/png");
 
         let updatedFault: Fault | undefined;
@@ -354,45 +357,16 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
 
 
   const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
-    const elementToCapture = document.createElement('div');
-    elementToCapture.style.position = 'fixed';
-    elementToCapture.style.left = '-9999px';
-    elementToCapture.style.width = '800px'; 
-    elementToCapture.style.backgroundColor = 'white';
-    document.body.appendChild(elementToCapture);
-
-    const tempActContainer = document.createElement('div');
-
-    // Dynamically create a React root to render the component.
-    const ReactDOMClient = await import('react-dom/client');
-    
-    // We need to use createRoot for React 18
-    const root = ReactDOMClient.createRoot(tempActContainer);
-    root.render(
-        <ActTemplate 
-            fault={fault} 
-            assignedWorker={getAssignedWorker(fault)}
-            workerSignatureDataUrl={fault.workerSignature}
-            customerSignatureDataUrl={fault.customerSignature}
-        />
-    );
-    elementToCapture.appendChild(tempActContainer);
-
-    // Wait a bit for images to load inside the component
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const canvas = await html2canvas(elementToCapture, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-    });
-     
-    document.body.removeChild(elementToCapture);
-    root.unmount();
-
+    if (!fault.actImageUrl) {
+        toast({
+            variant: "destructive",
+            title: "Klaida",
+            description: "Akto paveikslėlis nerastas. Pirmiausia turi pasirašyti abi pusės."
+        });
+        return null;
+    }
 
     try {
-        const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -401,21 +375,25 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        const img = new (await import('jspdf')).Image();
+        const imgProps = pdf.getImageProperties(fault.actImageUrl);
+
         const imgWidth = pdfWidth - 20; 
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
         
         let finalHeight = imgHeight;
         let finalWidth = imgWidth;
         
         if (imgHeight > pdfHeight - 20) {
             finalHeight = pdfHeight - 20;
-            finalWidth = (canvas.width * finalHeight) / canvas.height;
+            finalWidth = (imgProps.width * finalHeight) / imgProps.height;
         }
         
         const x = (pdfWidth - finalWidth) / 2;
         const y = 10;
 
-        pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+        pdf.addImage(fault.actImageUrl, 'PNG', x, y, finalWidth, finalHeight);
         return pdf.output('blob');
 
     } catch (error) {
@@ -451,7 +429,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
     });
 
     const zip = new JSZip();
-    const faultsToDownload = displayedFaults;
+    const faultsToDownload = displayedFaults.filter(f => f.status === 'completed' && f.actImageUrl);
 
     for (const fault of faultsToDownload) {
         const blob = await generatePdfBlob(fault);
@@ -468,7 +446,7 @@ const createSmsAction = (fault: Fault, newStatusLabel: string, assignedWorkerNam
             a.href = url;
             a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
             document.body.appendChild(a);
-a.click();
+            a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             toast({
@@ -487,7 +465,7 @@ a.click();
         toast({
             variant: "destructive",
             title: "Nėra duomenų atsisiuntimui",
-            description: "Pagal pasirinktus filtrus nerasta aktų, kuriuos būtų galima atsisiųsti."
+            description: "Pagal pasirinktus filtrus nerasta pilnai pasirašytų aktų, kuriuos būtų galima atsisiųsti."
         });
     }
 
@@ -520,7 +498,7 @@ a.click();
     return false;
   });
 
-  const downloadableActsCount = displayedFaults.length;
+  const downloadableActsCount = displayedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
   const statusCounts = {
     new: faults.filter(fault => fault.status === 'new').length,
@@ -683,7 +661,7 @@ a.click();
                         <span>Užsakovo parašas</span>
                       </DropdownMenuItem>
                        {view === 'admin' && (
-                        <DropdownMenuItem onClick={() => handleDownloadAct(fault)}>
+                        <DropdownMenuItem onClick={() => handleDownloadAct(fault)} disabled={!fault.actImageUrl}>
                           <Download className="mr-2 h-4 w-4" />
                           <span>Atsisiųsti aktą</span>
                         </DropdownMenuItem>
@@ -801,12 +779,13 @@ a.click();
               </DialogHeader>
               <div className="py-4 space-y-6 text-sm">
                 <div className="border rounded-md">
-                   <ActTemplate 
-                    fault={faultToSign.fault} 
-                    assignedWorker={getAssignedWorker(faultToSign.fault)}
-                    workerSignatureDataUrl={faultToSign.type === 'customer' ? faultToSign.fault.workerSignature : undefined}
-                    innerRef={actTemplateRef} 
-                   />
+                   <div ref={actTemplateRef}>
+                       <ActTemplate 
+                        fault={faultToSign.fault} 
+                        assignedWorker={getAssignedWorker(faultToSign.fault)}
+                        workerSignatureDataUrl={faultToSign.type === 'customer' ? faultToSign.fault.workerSignature : undefined}
+                       />
+                   </div>
                 </div>
                 <div>
                    <p className="text-center font-medium mb-2">
