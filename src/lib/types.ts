@@ -23,7 +23,7 @@ export interface NewFaultData {
 }
 
 export interface Fault extends NewFaultData {
-  id: string; // This will be the Firestore document ID from useCollection
+  id: string; // This is the unique Firestore document ID
   customId: string; // Custom, sequential ID like FAULT-0001
   status: Status;
   createdAt: any; // Firestore Timestamp
@@ -33,5 +33,3 @@ export interface Fault extends NewFaultData {
   customerSignature?: string;
   actImageUrl?: string;
 }
-
-    

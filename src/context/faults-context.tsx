@@ -25,63 +25,75 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   
   const { workers } = useWorkers();
 
-  const addFault = async (faultData: NewFaultData) => {
-    if (!faultsCollection || !firestore) return;
+  const addFault = (faultData: NewFaultData) => {
+    if (!faultsCollection || !firestore) {
+        console.error("Firestore not initialized, cannot add fault.");
+        return;
+    }
 
+    // 1. Generate Custom Sequential ID
     let nextIdNumber = 1;
     if (faults && faults.length > 0) {
-      const existingIds = faults
-        .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
-        .filter(n => !isNaN(n));
-      if (existingIds.length > 0) {
-        nextIdNumber = Math.max(...existingIds) + 1;
-      }
+        const existingIds = faults
+            .map(f => f.customId ? parseInt(f.customId.replace('FAULT-', ''), 10) : 0)
+            .filter(n => !isNaN(n));
+        if (existingIds.length > 0) {
+            nextIdNumber = Math.max(...existingIds) + 1;
+        }
     }
-    const newFaultId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
+    const newCustomId = `FAULT-${String(nextIdNumber).padStart(4, '0')}`;
 
-    const newFaultBase = {
+    // 2. Find the best worker to assign the task to
+    let assignedWorkerId: string | undefined = undefined;
+    let finalStatus: 'new' | 'assigned' = 'new';
+
+    if (workers && workers.length > 0) {
+        // Find workers with the right specialty
+        const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
+
+        if (suitableWorkers.length > 0) {
+            // Count active tasks for each suitable worker
+            const workerTaskCounts = suitableWorkers.map(worker => {
+                const taskCount = (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length;
+                return { workerId: worker.id, taskCount };
+            });
+
+            // Sort workers by task count to find the one with the fewest tasks
+            workerTaskCounts.sort((a, b) => a.taskCount - b.taskCount);
+            
+            assignedWorkerId = workerTaskCounts[0].workerId;
+            finalStatus = 'assigned';
+        }
+    }
+
+    // 3. Prepare the final new fault document
+    const newFaultDocument = {
       ...faultData,
-      customId: newFaultId,
+      customId: newCustomId,
+      status: finalStatus,
+      assignedTo: assignedWorkerId || '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    let assignedWorker: Worker | undefined;
-    if (workers && workers.length > 0) {
-      const suitableWorkers = workers.filter(worker => worker.specialty.includes(faultData.type));
-
-      if (suitableWorkers.length > 0) {
-        const workerTasksCount = suitableWorkers.map(worker => ({
-          worker,
-          taskCount: (faults || []).filter(f => f.assignedTo === worker.id && f.status !== 'completed').length
-        }));
-
-        workerTasksCount.sort((a, b) => a.taskCount - b.taskCount);
-        assignedWorker = workerTasksCount[0].worker;
-      }
-    }
-    
-    const newFaultData = {
-      ...newFaultBase,
-      status: assignedWorker ? 'assigned' as const : 'new' as const,
-      assignedTo: assignedWorker ? assignedWorker.id : '',
-    };
-
-    addDoc(faultsCollection, newFaultData).catch(error => {
+    // 4. Add the document to Firestore
+    addDoc(faultsCollection, newFaultDocument).catch(error => {
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
           path: faultsCollection.path,
           operation: 'create',
-          requestResourceData: newFaultData,
+          requestResourceData: newFaultDocument,
         })
-      )
+      );
+      console.error("Error adding fault to Firestore:", error);
     });
   };
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
     const faultRef = doc(firestore, 'issues', faultId);
+    // Use non-blocking update for better UI responsiveness
     updateDocumentNonBlocking(faultRef, { ...faultData, updatedAt: serverTimestamp() });
   };
 
@@ -106,5 +118,3 @@ export const useFaults = () => {
   }
   return context;
 };
-
-    

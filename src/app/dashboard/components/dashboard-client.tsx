@@ -62,7 +62,7 @@ interface DashboardClientProps {
   view: "admin" | "worker";
 }
 
-type SortKey = 'id' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'createdAt';
+type SortKey = 'customId' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'createdAt';
 
 interface NotificationContent {
     fault: Fault;
@@ -213,9 +213,16 @@ export function DashboardClient({
     setIsUpdating(faultId);
     
     const fault = faults?.find(f => f.id === faultId);
-    if (!fault) return;
+    if (!fault) {
+        setIsUpdating(null);
+        return;
+    }
 
-    const updatedFaultData = { assignedTo: workerId, status: "assigned" as Status };
+    const updatedFaultData: Partial<Fault> = { 
+        assignedTo: workerId, 
+        status: "assigned" 
+    };
+    
     updateFault(faultId, updatedFaultData);
     
     const workerName = workers?.find(w => w.id === workerId)?.name;
@@ -224,6 +231,7 @@ export function DashboardClient({
       description: `Specialistas ${workerName} priskirtas gedimui ${fault.customId}.`,
     });
     
+    // Open notification editor with the most up-to-date fault data
     openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig.assigned.label, workerName);
     
     setIsUpdating(null);
@@ -232,9 +240,12 @@ export function DashboardClient({
   const handleUpdateStatus = (faultId: string, status: Status) => {
     setIsUpdating(faultId);
     const fault = faults?.find(f => f.id === faultId);
-    if (!fault) return;
+    if (!fault) {
+        setIsUpdating(null);
+        return;
+    }
 
-    const updatedFaultData = { status: status, updatedAt: new Date() };
+    const updatedFaultData = { status: status };
     updateFault(faultId, updatedFaultData);
 
     toast({
@@ -464,10 +475,11 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     let filteredFaults: Fault[] = [];
 
     if (view === 'worker') {
-        if(user?.uid) {
+        // Logic for worker view: filter by assigned user and status not completed
+        if (user?.uid) {
             filteredFaults = faults.filter(fault => fault.assignedTo === user.uid && fault.status !== 'completed');
         }
-    } else { // admin view
+    } else { // Logic for admin view
         filteredFaults = faults.filter(fault => {
             const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
             
@@ -479,45 +491,44 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         });
     }
   
+    // Sorting logic remains the same for both views
     return [...filteredFaults].sort((a, b) => {
-        if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
-          const dateA = a[sortKey]?.toDate ? a[sortKey].toDate().getTime() : 0;
-          const dateB = b[sortKey]?.toDate ? b[sortKey].toDate().getTime() : 0;
-          return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        let valA: string | number | Date | undefined;
+        let valB: string | number | Date | undefined;
+
+        switch (sortKey) {
+            case 'createdAt':
+            case 'updatedAt':
+                valA = a[sortKey]?.toDate ? a[sortKey].toDate() : new Date(0);
+                valB = b[sortKey]?.toDate ? b[sortKey].toDate() : new Date(0);
+                if (valA && valB) {
+                    return sortDirection === 'asc' ? valA.getTime() - valB.getTime() : valB.getTime() - valA.getTime();
+                }
+                return 0;
+            case 'customId':
+                const numA = parseInt(a.customId.replace('FAULT-', ''), 10);
+                const numB = parseInt(b.customId.replace('FAULT-', ''), 10);
+                return sortDirection === 'asc' ? numA - numB : numB - numA;
+            case 'assignedTo':
+                valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z'; // 'Z' to sort unassigned last
+                valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
+                break;
+            case 'status':
+                valA = statusConfig[a.status].label;
+                valB = statusConfig[b.status].label;
+                break;
+            default: // for description, type, address
+                valA = a[sortKey];
+                valB = b[sortKey];
         }
 
-        if (sortKey === 'id') {
-            const numA = parseInt(a.customId.replace('FAULT-', ''), 10);
-            const numB = parseInt(b.customId.replace('FAULT-', ''), 10);
-            if (!isNaN(numA) && !isNaN(numB)) {
-                 return sortDirection === 'asc' ? numA - numB : numB - numA;
-            }
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return sortDirection === 'asc' ? valA.localeCompare(valB, 'lt') : valB.localeCompare(valA, 'lt');
         }
         
-        let valA: string | undefined;
-        let valB: string | undefined;
-        
-        if (sortKey === 'status') {
-          valA = statusConfig[a.status].label;
-          valB = statusConfig[b.status].label;
-        } else if (sortKey === 'assignedTo') {
-          valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
-          valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
-        } else if (sortKey === 'type' || sortKey === 'address' || sortKey === 'description') {
-          valA = a[sortKey];
-          valB = b[sortKey];
-        }
-
-
-        if (valA === undefined || valB === undefined) return 0;
-        
-        if (sortDirection === 'asc') {
-          return valA.localeCompare(valB, 'lt', { numeric: true });
-        } else {
-          return valB.localeCompare(valA, 'lt', { numeric: true });
-        }
-      });
-  }, [faults, view, user, statusFilter, dateRange, sortKey, sortDirection, workers]);
+        return 0;
+    });
+}, [faults, view, user, statusFilter, dateRange, sortKey, sortDirection, workers]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
@@ -626,7 +637,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader sortKey="id" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
+              <SortableHeader sortKey="customId" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
               <SortableHeader sortKey="type" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Tipas</SortableHeader>
               <SortableHeader sortKey="description" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Aprašymas</SortableHeader>
               <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
@@ -937,8 +948,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setNotificationContent(null)}>Atšaukti</Button>
-                     <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setNotificationContent(null)}>Atšaukti</Button>                     <div className="flex gap-2">
                         <Button asChild>
                            <a href={`mailto:${notificationContent.fault.reporterEmail}?subject=${encodeURIComponent(notificationContent.subject)}&body=${encodeURIComponent(notificationContent.emailBody)}`}>
                             <Send className="mr-2 h-4 w-4" /> Siųsti el. laišką
