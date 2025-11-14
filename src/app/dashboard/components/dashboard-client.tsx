@@ -547,89 +547,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
       </div>
     );
   }
-
-  const adminView = (
-    <div className="space-y-4">
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {(Object.keys(statusConfig) as Status[]).map((status) => {
-          const config = statusConfig[status];
-          const Icon = config.icon;
-          return (
-            <Card
-              key={status}
-              isClickable={true}
-              onClick={() => setStatusFilter(status)}
-              className={cn('ring-2 ring-transparent transition-all', statusFilter === status && config.ringClassName)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {config.label}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statusCounts[status]}</div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Ataskaitos pagal datą</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-4">
-          <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-          {dateRange && <Button variant="outline" onClick={() => setDateRange(undefined)}>Išvalyti</Button>}
-           <Button
-                onClick={handleDownloadAllActs}
-                disabled={isDownloadingAll || downloadableActsCount === 0}
-            >
-                {isDownloadingAll ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Archive className="mr-2 h-4 w-4" />
-                )}
-                Atsisiųsti visus aktus ({downloadableActsCount})
-            </Button>
-        </CardContent>
-      </Card>
-      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Status | "all")}>
-        <TabsList className="grid w-full grid-cols-5 mb-4">
-          <TabsTrigger value="all">Visi ({statusCounts.all})</TabsTrigger>
-          <TabsTrigger value="new">Nauji ({statusCounts.new})</TabsTrigger>
-          <TabsTrigger value="assigned">Priskirti ({statusCounts.assigned})</TabsTrigger>
-          <TabsTrigger value="in-progress">Vykdomi ({statusCounts['in-progress']})</TabsTrigger>
-          <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
-        </TabsList>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-headline">Visi gedimai</CardTitle>
-              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Registruoti gedimą
-              </Button>
-          </CardHeader>
-          <CardContent>
-            {renderTable()}
-          </CardContent>
-        </Card>
-      </Tabs>
-      <AddFaultDialog isOpen={isAddFaultDialogOpen} onOpenChange={setIsAddFaultDialogOpen} />
-    </div>
-  );
-
-  const workerView = (
-       <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Mano aktyvios užduotys</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {renderTable()}
-        </CardContent>
-      </Card>
-  );
   
   function renderTable() {
     return (
@@ -716,7 +633,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Veiksmai</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={()={() => setSelectedFault(fault)}>
+                      <DropdownMenuItem onClick={() => setSelectedFault(fault)}>
                           <Info className="mr-2 h-4 w-4" />
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
@@ -798,6 +715,137 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         </Table>
     );
   }
+
+  const adminView = (
+    <div className="space-y-4">
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {(Object.keys(statusConfig) as Status[]).map((status) => {
+          const config = statusConfig[status];
+          const Icon = config.icon;
+          return (
+            <Card
+              key={status}
+              isClickable={true}
+              onClick={() => setStatusFilter(status)}
+              className={cn('ring-2 ring-transparent transition-all', statusFilter === status && config.ringClassName)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {config.label}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{statusCounts[status]}</div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ataskaitos pagal datą</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+          {dateRange && <Button variant="outline" onClick={() => setDateRange(undefined)}>Išvalyti</Button>}
+           <Button
+                onClick={handleDownloadAllActs}
+                disabled={isDownloadingAll || downloadableActsCount === 0}
+            >
+                {isDownloadingAll ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Archive className="mr-2 h-4 w-4" />
+                )}
+                Atsisiųsti visus aktus ({downloadableActsCount})
+            </Button>
+        </CardContent>
+      </Card>
+      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Status | "all")}>
+        <TabsList className="grid w-full grid-cols-5 mb-4">
+          <TabsTrigger value="all">Visi ({statusCounts.all})</TabsTrigger>
+          <TabsTrigger value="new">Nauji ({statusCounts.new})</TabsTrigger>
+          <TabsTrigger value="assigned">Priskirti ({statusCounts.assigned})</TabsTrigger>
+          <TabsTrigger value="in-progress">Vykdomi ({statusCounts['in-progress']})</TabsTrigger>
+          <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline">Visi gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registruoti gedimą
+              </Button>
+            </CardHeader>
+            <CardContent>{renderTable()}</CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="new">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline">Nauji gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registruoti gedimą
+              </Button>
+            </CardHeader>
+            <CardContent>{renderTable()}</CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="assigned">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline">Priskirti gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registruoti gedimą
+              </Button>
+            </CardHeader>
+            <CardContent>{renderTable()}</CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="in-progress">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline">Vykdomi gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registruoti gedimą
+              </Button>
+            </CardHeader>
+            <CardContent>{renderTable()}</CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="completed">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-headline">Užbaigti gedimai</CardTitle>
+              <Button onClick={() => setIsAddFaultDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Registruoti gedimą
+              </Button>
+            </CardHeader>
+            <CardContent>{renderTable()}</CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      <AddFaultDialog isOpen={isAddFaultDialogOpen} onOpenChange={setIsAddFaultDialogOpen} />
+    </div>
+  );
+
+  const workerView = (
+       <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Mano aktyvios užduotys</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderTable()}
+        </CardContent>
+      </Card>
+  );
 
   return (
     <>
