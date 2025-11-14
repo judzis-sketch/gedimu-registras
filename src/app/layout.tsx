@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import { FaultsProvider } from "@/context/faults-context";
+import { WorkersProvider } from "@/context/workers-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,10 +29,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
-        <FaultsProvider>
-          {children}
-          <Toaster />
-        </FaultsProvider>
+        <WorkersProvider>
+          <FaultsProvider>
+            {children}
+            <Toaster />
+          </FaultsProvider>
+        </WorkersProvider>
       </body>
     </html>
   );

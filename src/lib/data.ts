@@ -6,7 +6,7 @@ export const workers: Worker[] = [
   { id: "worker-3", name: "Ona Onaitė", specialty: ["heating", "general"] },
 ];
 
-export const faults: Fault[] = [
+export const faults: Omit<Fault, 'createdAt' | 'updatedAt'>[] = [
   {
     id: "FAULT-001",
     reporterName: "Marija Marijona",
@@ -17,8 +17,6 @@ export const faults: Fault[] = [
     description: "Laša vanduo iš čiaupo virtuvėje. Atrodo, kad sugedo tarpinė.",
     status: "assigned",
     assignedTo: "worker-2",
-    createdAt: new Date("2024-07-20T09:00:00Z"),
-    updatedAt: new Date("2024-07-20T11:00:00Z"),
   },
   {
     id: "FAULT-002",
@@ -29,8 +27,6 @@ export const faults: Fault[] = [
     type: "electricity",
     description: "Nėra elektros viename kambaryje. Saugikliai atrodo tvarkingi.",
     status: "new",
-    createdAt: new Date("2024-07-21T14:30:00Z"),
-    updatedAt: new Date("2024-07-21T14:30:00Z"),
   },
   {
     id: "FAULT-003",
@@ -42,8 +38,6 @@ export const faults: Fault[] = [
     description: "Vienas radiatorius visiškai nešyla, nors sistema įjungta.",
     status: "completed",
     assignedTo: "worker-3",
-    createdAt: new Date("2024-07-19T08:00:00Z"),
-    updatedAt: new Date("2024-07-19T15:00:00Z"),
     signature: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
   },
   {
@@ -56,8 +50,6 @@ export const faults: Fault[] = [
     description: "Sulūžo laiptinės durų spyna, nebeužsirakina.",
     status: "in-progress",
     assignedTo: "worker-1",
-    createdAt: new Date("2024-07-22T10:00:00Z"),
-    updatedAt: new Date("2024-07-22T10:30:00Z"),
   },
     {
     id: "FAULT-005",
@@ -68,7 +60,5 @@ export const faults: Fault[] = [
     type: "plumbing",
     description: "Užsikimšo vonios nutekėjimas, vanduo nebėga.",
     status: "new",
-    createdAt: new Date("2024-07-22T11:00:00Z"),
-    updatedAt: new Date("2024-07-22T11:00:00Z"),
   },
 ];

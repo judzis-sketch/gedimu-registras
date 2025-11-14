@@ -1,10 +1,13 @@
 export type FaultType = "electricity" | "plumbing" | "heating" | "general";
 export type Status = "new" | "assigned" | "in-progress" | "completed";
 
-export interface Worker {
-  id: string;
+export interface NewWorkerData {
   name: string;
   specialty: FaultType[];
+}
+
+export interface Worker extends NewWorkerData {
+  id: string;
 }
 
 export interface NewFaultData {

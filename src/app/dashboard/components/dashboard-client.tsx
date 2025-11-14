@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
+import { useWorkers } from "@/context/workers-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToastAction } from "@/components/ui/toast";
 import { SignaturePad } from "@/components/signature-pad";
@@ -47,7 +48,6 @@ import html2canvas from "html2canvas";
 
 
 interface DashboardClientProps {
-  initialWorkers: Worker[];
   view: "admin" | "worker";
   workerId?: string;
 }
@@ -79,11 +79,11 @@ const FormattedDate = ({ date }: { date: Date | string | undefined }) => {
 };
 
 export function DashboardClient({
-  initialWorkers,
   view,
   workerId,
 }: DashboardClientProps) {
   const { faults, setFaults } = useFaults();
+  const { workers } = useWorkers();
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
@@ -147,7 +147,7 @@ export function DashboardClient({
     );
     
     if (updatedFault) {
-      const workerName = initialWorkers.find(w => w.id === workerId)?.name;
+      const workerName = workers.find(w => w.id === workerId)?.name;
       toast({
         title: "Specialistas priskirtas",
         description: "Paruoštas pranešimas vartotojui.",
@@ -292,11 +292,11 @@ export function DashboardClient({
 
   const getWorkerName = (workerId?: string) => {
     if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
-    return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
+    return workers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
   
   const getAssignedWorker = (fault: Fault) => {
-    return initialWorkers.find((w) => w.id === fault.assignedTo);
+    return workers.find((w) => w.id === fault.assignedTo);
   }
 
   const displayedFaults = view === 'admin'
@@ -417,7 +417,7 @@ export function DashboardClient({
                               <span>Priskirti specialistą</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent>
-                                {initialWorkers.map(worker => (
+                                {workers.map(worker => (
                                     <DropdownMenuItem key={worker.id} onClick={() => handleAssignWorker(fault.id, worker.id)}>
                                         {worker.name}
                                     </DropdownMenuItem>

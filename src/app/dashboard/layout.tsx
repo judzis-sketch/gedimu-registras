@@ -16,12 +16,12 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons";
-import { LayoutDashboard, User, Wrench, LogOut } from "lucide-react";
+import { LayoutDashboard, User, Wrench, LogOut, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import React from "react";
-import { workers } from "@/lib/data";
+import { useWorkers } from "@/context/workers-context";
 import { useFaults } from "@/context/faults-context";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,6 +38,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const role = searchParams.get("role") || "user";
   const { faults } = useFaults();
+  const { workers } = useWorkers();
 
   const handleLogout = () => {
     router.push("/");
@@ -70,6 +71,8 @@ export default function DashboardLayout({
   let title = "Gedimų Registras";
   if (role === 'admin' && pathname === '/dashboard') {
     title = "Visos gedimų užklausos";
+  } else if (role === 'admin' && pathname === '/dashboard/workers') {
+    title = "Darbuotojų valdymas";
   } else if (role === 'worker' && pathname === '/dashboard/my-tasks') {
     title = "Mano užduotys";
   } else if (role === 'admin' && pathname === '/dashboard/my-tasks') {
@@ -91,21 +94,35 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarMenu>
             {role === 'admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/dashboard"}
-                  tooltip="Visos užklausos"
-                >
-                  <Link href={{ pathname: "/dashboard", query: { role: 'admin' } }}>
-                    <LayoutDashboard />
-                    <span className="flex-1">Visos užklausos</span>
-                     {newFaultsCount > 0 && (
-                      <Badge className="ml-auto h-5">{newFaultsCount}</Badge>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/dashboard"}
+                    tooltip="Visos užklausos"
+                  >
+                    <Link href={{ pathname: "/dashboard", query: { role: 'admin' } }}>
+                      <LayoutDashboard />
+                      <span className="flex-1">Visos užklausos</span>
+                      {newFaultsCount > 0 && (
+                        <Badge className="ml-auto h-5">{newFaultsCount}</Badge>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                   <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/dashboard/workers"}
+                    tooltip="Darbuotojai"
+                  >
+                    <Link href={{ pathname: "/dashboard/workers", query: { role: 'admin' } }}>
+                      <Users />
+                      <span className="flex-1">Darbuotojai</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
             {(role === 'admin' || role === 'worker') && (
               <SidebarMenuItem>

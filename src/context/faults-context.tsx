@@ -4,6 +4,17 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { faults as initialFaultsData } from '@/lib/data';
 import { Fault, NewFaultData } from '@/lib/types';
 
+// Add random dates for createdAt and updatedAt for initial data
+const getInitialFaults = () => {
+    const now = new Date();
+    return initialFaultsData.map((fault, index) => ({
+        ...fault,
+        createdAt: new Date(now.getTime() - (initialFaultsData.length - index) * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - (initialFaultsData.length - index) * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
+    }));
+};
+
+
 interface FaultsContextType {
   faults: Fault[];
   setFaults: React.Dispatch<React.SetStateAction<Fault[]>>;
@@ -13,7 +24,7 @@ interface FaultsContextType {
 const FaultsContext = createContext<FaultsContextType | undefined>(undefined);
 
 export const FaultsProvider = ({ children }: { children: ReactNode }) => {
-  const [faults, setFaults] = useState<Fault[]>(initialFaultsData.map(f => ({...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt)})));
+  const [faults, setFaults] = useState<Fault[]>(getInitialFaults());
 
   const addFault = (faultData: NewFaultData) => {
     const newFault: Fault = {
