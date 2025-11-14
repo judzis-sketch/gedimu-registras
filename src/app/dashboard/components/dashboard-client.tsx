@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive, MessageSquare, AlertCircle, Map, ListTodo, Wrench, CheckCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -56,6 +56,8 @@ interface DashboardClientProps {
   view: "admin" | "worker";
   workerId?: string;
 }
+
+type SortKey = 'status' | 'assignedTo' | 'updatedAt';
 
 const statusConfig: Record<
   Status,
@@ -100,7 +102,7 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
       <div className="p-2 border rounded-md bg-gray-100 space-y-1">
           <p><span className="font-semibold">Registruotas gedimas:</span> {fault.description}</p>
           <p><span className="font-semibold">Gavimo data:</span> <FormattedDate date={fault.createdAt} /></p>
-          {fault.status === 'completed' && <p><span className="font-semibold">Užbaigimo data:</span> <FormattedDate date={fault.updatedAt} /></p>}
+          {fault.status === 'completed' && fault.updatedAt && <p><span className="font-semibold">Užbaigimo data:</span> <FormattedDate date={fault.updatedAt} /></p>}
       </div>
       <p>
          Užsakovas <span className="font-semibold">{fault.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
@@ -141,7 +143,7 @@ export function DashboardClient({
   const { toast } = useToast();
   const [selectedFault, setSelectedFault] = useState<Fault | null>(null);
   const [faultToSign, setFaultToSign] = useState<{fault: Fault, type: 'worker' | 'customer'} | null>(null);
-  const [statusFilter, setStatusFilter] = useState<Status | 'all'>("new");
+  const [statusFilter, setStatusFilter] = useState<Status | 'all'>("all");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const actTemplateRef = useRef<HTMLDivElement>(null);
@@ -149,6 +151,8 @@ export function DashboardClient({
     from: addDays(new Date(), -30),
     to: new Date(),
   });
+  const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
  const createMailToAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
   const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
@@ -416,7 +420,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     });
 
     const zip = new JSZip();
-    const faultsToDownload = displayedFaults.filter(f => f.status === 'completed' && f.actImageUrl);
+    const faultsToDownload = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl);
 
     for (const fault of faultsToDownload) {
         const blob = await generatePdfBlob(fault);
@@ -461,15 +465,24 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
 
   const getWorkerName = (workerId?: string) => {
-    if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
+    if (!workerId) return "Nepriskirta";
     return workers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
   
   const getAssignedWorker = (fault: Fault) => {
     return workers.find((w) => w.id === fault.assignedTo);
   }
+  
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
 
-  const displayedFaults = faults.filter(fault => {
+  const displayedAndSortedFaults = faults.filter(fault => {
     if (view === 'worker') {
         return fault.assignedTo === workerId && fault.status !== 'completed';
     }
@@ -483,9 +496,34 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     }
 
     return false;
+  }).sort((a, b) => {
+    if (sortKey === 'updatedAt') {
+      const dateA = new Date(a.updatedAt).getTime();
+      const dateB = new Date(b.updatedAt).getTime();
+      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+    
+    let valA: string | undefined;
+    let valB: string | undefined;
+    
+    if (sortKey === 'status') {
+      valA = statusConfig[a.status].label;
+      valB = statusConfig[b.status].label;
+    } else if (sortKey === 'assignedTo') {
+      valA = a.assignedTo ? getWorkerName(a.assignedTo) : 'Z';
+      valB = b.assignedTo ? getWorkerName(b.assignedTo) : 'Z';
+    }
+
+    if (!valA || !valB) return 0;
+    
+    if (sortDirection === 'asc') {
+      return valA.localeCompare(valB);
+    } else {
+      return valB.localeCompare(valA);
+    }
   });
 
-  const downloadableActsCount = displayedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
+  const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
   const statusCounts = {
     new: faults.filter(fault => fault.status === 'new').length,
@@ -571,6 +609,17 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         </CardContent>
       </Card>
   );
+
+  const SortableHeader = ({ sortKey: key, children }: { sortKey: SortKey, children: React.ReactNode }) => (
+    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
+      <div className="flex items-center gap-2">
+        {children}
+        {sortKey === key && (
+          sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        )}
+      </div>
+    </TableHead>
+  );
   
   function renderTable() {
     return (
@@ -581,22 +630,34 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               <TableHead>Tipas</TableHead>
               <TableHead>Adresas</TableHead>
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
-              <TableHead>Būsena</TableHead>
-              <TableHead>Priskirta</TableHead>
+              {view === 'admin' ? (
+                <SortableHeader sortKey="status">Būsena</SortableHeader>
+              ) : (
+                <TableHead>Būsena</TableHead>
+              )}
+               {view === 'admin' ? (
+                <SortableHeader sortKey="assignedTo">Priskirta</SortableHeader>
+              ) : (
+                <TableHead>Priskirta</TableHead>
+              )}
               {view === 'worker' && <TableHead>Keisti būseną</TableHead>}
-              <TableHead>Atnaujinta</TableHead>
+              {view === 'admin' ? (
+                <SortableHeader sortKey="updatedAt">Atnaujinta</SortableHeader>
+              ) : (
+                <TableHead>Atnaujinta</TableHead>
+              )}
               <TableHead className="text-right">Veiksmai</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayedFaults.length === 0 ? (
+            {displayedAndSortedFaults.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={view === 'worker' ? 9 : 8} className="h-24 text-center">
                   {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
             ) : (
-              displayedFaults.map((fault) => (
+              displayedAndSortedFaults.map((fault) => (
               <TableRow key={fault.id}>
                 <TableCell className="font-medium">{fault.id}</TableCell>
                 <TableCell>
