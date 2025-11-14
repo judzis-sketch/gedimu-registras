@@ -224,7 +224,7 @@ export function DashboardClient({
       description: `Specialistas ${workerName} priskirtas gedimui ${fault.customId}.`,
     });
     
-    openNotificationEditor({ ...fault, ...updatedFaultData, assignedTo: workerId }, statusConfig.assigned.label, workerName);
+    openNotificationEditor({ ...fault, ...updatedFaultData }, statusConfig.assigned.label, workerName);
     
     setIsUpdating(null);
   };
@@ -304,7 +304,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         });
 
         if (view === 'admin') {
-             openNotificationEditor({ ...currentFault, ...updatedFaultData, updatedAt: new Date(), createdAt: new Date() }, statusConfig.completed.label);
+             openNotificationEditor({ ...currentFault, ...updatedFaultData }, statusConfig.completed.label);
         }
 
     } catch (error) {
@@ -461,19 +461,22 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
   
-    let filteredFaults = faults;
-  
+    let filteredFaults: Fault[] = [];
+
     if (view === 'worker') {
-      // Correctly filter for the logged-in worker's tasks that are not completed.
-      filteredFaults = faults.filter(fault => fault.assignedTo === user?.uid && fault.status !== 'completed');
-    } else if (view === 'admin') {
-      filteredFaults = faults.filter(fault => {
-        const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
-        const dateMatch = dateRange?.from && dateRange.to && fault.createdAt?.toDate
-          ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
-          : true;
-        return statusMatch && dateMatch;
-      });
+        if(user?.uid) {
+            filteredFaults = faults.filter(fault => fault.assignedTo === user.uid && fault.status !== 'completed');
+        }
+    } else { // admin view
+        filteredFaults = faults.filter(fault => {
+            const statusMatch = statusFilter === 'all' ? true : fault.status === statusFilter;
+            
+            const dateMatch = dateRange?.from && dateRange.to && fault.createdAt?.toDate
+                ? fault.createdAt.toDate() >= dateRange.from && fault.createdAt.toDate() <= dateRange.to
+                : true;
+
+            return statusMatch && dateMatch;
+        });
     }
   
     return [...filteredFaults].sort((a, b) => {
@@ -514,7 +517,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           return valB.localeCompare(valA, 'lt', { numeric: true });
         }
       });
-  }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
+  }, [faults, view, user, statusFilter, dateRange, sortKey, sortDirection, workers]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
@@ -955,5 +958,3 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     </>
   );
 }
-
-    
