@@ -133,7 +133,6 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
   );
 };
 
-
 export function DashboardClient({
   view,
   workerId,
@@ -532,6 +531,17 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
     completed: faults.filter(fault => fault.status === 'completed').length
   };
 
+  const SortableHeader = ({ sortKey: key, children }: { sortKey: SortKey, children: React.ReactNode }) => (
+    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
+      <div className="flex items-center gap-2">
+        {children}
+        {sortKey === key && (
+          sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        )}
+      </div>
+    </TableHead>
+  );
+
   const adminView = (
     <div className="space-y-4">
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -608,17 +618,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           {renderTable()}
         </CardContent>
       </Card>
-  );
-
-  const SortableHeader = ({ sortKey: key, children }: { sortKey: SortKey, children: React.ReactNode }) => (
-    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
-      <div className="flex items-center gap-2">
-        {children}
-        {sortKey === key && (
-          sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-        )}
-      </div>
-    </TableHead>
   );
   
   function renderTable() {
