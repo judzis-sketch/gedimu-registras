@@ -29,7 +29,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2 } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { lt } from "date-fns/locale";
 import { useFaults } from "@/context/faults-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToastAction } from "@/components/ui/toast";
 
 interface DashboardClientProps {
   initialWorkers: Worker[];
@@ -100,40 +101,76 @@ export function DashboardClient({
    </DropdownMenuSub>
  );
 
+ const createMailToAction = (fault: Fault, newStatusLabel: string, assignedWorkerName?: string) => {
+  const subject = `Jūsų gedimo pranešimo (ID: ${fault.id}) būsena atnaujinta`;
+  let body = `Laba diena, ${fault.reporterName},\n\nInformuojame, kad jūsų gedimo pranešimo (ID: ${fault.id}), adresu ${fault.address}, būsena buvo pakeista į "${newStatusLabel}".\n\n`;
+
+  if (assignedWorkerName) {
+    body += `Gedimą tvarkys specialistas: ${assignedWorkerName}.\n\n`;
+  }
+  
+  if (newStatusLabel === 'Užbaigtas') {
+      body += `Jūsų pranešta problema buvo išspręsta.\n\n`;
+  }
+
+  body += "Pagarbiai,\nGedimų Registras";
+
+  const mailtoLink = `mailto:${fault.reporterEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  return (
+    <ToastAction altText="Siųsti pranešimą" asChild>
+      <a href={mailtoLink}><Send className="mr-2 h-4 w-4" /> Siųsti pranešimą</a>
+    </ToastAction>
+  )
+};
+
   const handleAssignWorker = (faultId: string, workerId: string) => {
     setIsUpdating(faultId);
+    let updatedFault: Fault | undefined;
+
     setFaults((prevFaults) =>
       prevFaults.map((fault) => {
         if (fault.id === faultId) {
-          return { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
+          updatedFault = { ...fault, assignedTo: workerId, status: "assigned", updatedAt: new Date() };
+          return updatedFault;
         }
         return fault;
       })
     );
-
-    toast({
-      title: "Specialistas priskirtas",
-      description: "Vartotojas informuotas apie būsenos pasikeitimą.",
-    });
+    
+    if (updatedFault) {
+      const workerName = initialWorkers.find(w => w.id === workerId)?.name;
+      toast({
+        title: "Specialistas priskirtas",
+        description: "Paruoštas pranešimas vartotojui.",
+        action: createMailToAction(updatedFault, statusConfig.assigned.label, workerName)
+      });
+    }
     
     setIsUpdating(null);
   };
 
   const handleUpdateStatus = (faultId: string, status: Status) => {
     setIsUpdating(faultId);
+    let updatedFault: Fault | undefined;
+
     setFaults((prevFaults) =>
       prevFaults.map((fault) => {
         if (fault.id === faultId) {
-          return { ...fault, status: status, updatedAt: new Date() };
+          updatedFault = { ...fault, status: status, updatedAt: new Date() };
+          return updatedFault;
         }
         return fault;
       })
     );
 
-     toast({
-      title: `Būsena pakeista į "${statusConfig[status].label}"`,
-      description: "Vartotojas informuotas apie būsenos pasikeitimą.",
-    });
+     if(updatedFault) {
+        toast({
+            title: `Būsena pakeista į "${statusConfig[status].label}"`,
+            description: "Paruoštas pranešimas vartotojui.",
+            action: createMailToAction(updatedFault, statusConfig[status].label)
+        });
+     }
 
      setIsUpdating(null);
   };
