@@ -513,7 +513,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
           return valB.localeCompare(valA, 'lt', { numeric: true });
         }
       });
-  }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user?.uid]);
+  }, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
