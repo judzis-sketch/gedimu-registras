@@ -59,7 +59,19 @@ Kartais, ypač jei anksčiau bandėte konfigūruoti `Firebase` šiame kataloge, 
 3.  Kai įsitikinsite, kad viskas gerai, vėl vykdykite `firebase init apphosting`. Dabar turėtumėte matyti interaktyvius pasirinkimus.
 
 
-## 5. Kodo Įkėlimas į GitHub
+## 5. Kaip susieti programą su GitHub?
+
+`App Hosting` yra sukurtas taip, kad veiktų su `GitHub`. Tai reiškia, kad kaskart, kai įkelsite (`push`) kodo pakeitimus į savo repozitoriją, `Firebase` automatiškai pradės diegimo procesą.
+
+Jei vykdant `firebase init apphosting` praleidote `GitHub` susiejimo žingsnį, tiesiog paleiskite komandą iš naujo. `Firebase` patikrins esamą konfigūraciją ir leis jums nustatyti `GitHub` repozitoriją:
+
+1.  Paleiskite `firebase init apphosting` dar kartą.
+2.  Kai `CLI` paklaus **"Set up a GitHub repository for continual deployment?"**, atsakykite `Yes`.
+3.  Naršyklėje atsidarys langas, kuriame turėsite leisti `Firebase` pasiekti jūsų `GitHub` paskyrą.
+4.  Pasirinkite, kuriai `GitHub` paskyrai ar organizacijai priklauso jūsų repozitorija.
+5.  Iš pateikto sąrašo pasirinkite savo projekto repozitoriją. `Firebase` automatiškai nustatys visus reikiamus `webhook'us` ir `GitHub Actions`, kad diegimas veiktų.
+
+## 6. Kodo Įkėlimas į GitHub
 
 Įsitikinkite, kad visi jūsų naujausi pakeitimai yra įkelti (`pushed`) į `GitHub` repozitorijos pagrindinę (`main` arba `master`) šaką.
 
@@ -69,7 +81,7 @@ git commit -m "Pabaigti programos pakeitimai"
 git push origin main
 ```
 
-## 6. Diegimas
+## 7. Diegimas
 
 `Firebase App Hosting` yra sukonfigūruotas taip, kad automatiškai įdiegtų naują versiją kaskart, kai įkeliate pakeitimus į pagrindinę `GitHub` šaką.
 
