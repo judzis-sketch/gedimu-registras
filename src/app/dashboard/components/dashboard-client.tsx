@@ -60,7 +60,7 @@ interface DashboardClientProps {
   workerId?: string;
 }
 
-type SortKey = 'id' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'description';
+type SortKey = 'id' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt';
 
 interface NotificationContent {
     fault: Fault;
@@ -492,8 +492,8 @@ a.click();
     return false;
   }).sort((a, b) => {
     if (sortKey === 'updatedAt' || sortKey === 'createdAt') {
-      const dateA = new Date(a[sortKey]).getTime();
-      const dateB = new Date(b[sortKey]).getTime();
+      const dateA = new Date(a[sortKey as 'updatedAt' | 'createdAt']).getTime();
+      const dateB = new Date(b[sortKey as 'updatedAt' | 'createdAt']).getTime();
       return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     }
     
@@ -615,6 +615,7 @@ a.click();
           <TableHeader>
             <TableRow>
               <SortableHeader sortKey="id" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>ID</SortableHeader>
+              <SortableHeader sortKey="type" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Tipas</SortableHeader>
               <SortableHeader sortKey="description" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Aprašymas</SortableHeader>
               <SortableHeader sortKey="address" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Adresas</SortableHeader>
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
@@ -628,7 +629,7 @@ a.click();
           <TableBody>
             {displayedAndSortedFaults.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={view === 'worker' ? 9 : 8} className="h-24 text-center">
+                <TableCell colSpan={view === 'worker' ? 10 : 8} className="h-24 text-center">
                   {view === 'worker' ? "Neturite priskirtų užduočių." : "Pagal pasirinktus filtrus gedimų nerasta."}
                 </TableCell>
               </TableRow>
@@ -639,8 +640,10 @@ a.click();
                 <TableCell>
                   <div className="flex items-center gap-2" title={fault.type}>
                       <FaultTypeIcon type={fault.type} className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{fault.description.substring(0, 40)}{fault.description.length > 40 ? '...' : ''}</span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <span className="font-medium">{fault.description.substring(0, 40)}{fault.description.length > 40 ? '...' : ''}</span>
                 </TableCell>
                 <TableCell>{fault.address}</TableCell>
                 {view === 'worker' && <TableCell>{fault.reporterName}</TableCell>}
@@ -915,12 +918,12 @@ a.click();
                     </DialogClose>
                      <div className="flex gap-2">
                         <Button asChild>
-                           <a href={`mailto:${notificationContent.fault.reporterEmail}?subject=${encodeURIComponent(notificationContent.subject)}&body=${encodeURIComponent(notificationContent.emailBody)}`} onClick={() => setNotificationContent(null)}>
+                           <a href={`mailto:${notificationContent.fault.reporterEmail}?subject=${encodeURIComponent(notificationContent.subject)}&body=${encodeURIComponent(notificationContent.emailBody)}`}>
                             <Send className="mr-2 h-4 w-4" /> Siųsti el. laišką
                            </a>
                         </Button>
                         <Button asChild>
-                            <a href={`sms:${notificationContent.fault.reporterPhone}?body=${encodeURIComponent(notificationContent.smsBody)}`} onClick={() => setNotificationContent(null)}>
+                            <a href={`sms:${notificationContent.fault.reporterPhone}?body=${encodeURIComponent(notificationContent.smsBody)}`}>
                                 <MessageSquare className="mr-2 h-4 w-4" /> Siųsti SMS
                             </a>
                         </Button>
