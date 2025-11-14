@@ -49,7 +49,7 @@ export default function LoginPage() {
       }
 
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/user-not-found') {
         // If user not found, try to create a new user
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -75,7 +75,7 @@ export default function LoginPage() {
         toast({
           variant: "destructive",
           title: "Prisijungimo klaida",
-          description: error.message || "Patikrinkite savo prisijungimo duomenis.",
+          description: "Patikrinkite savo prisijungimo duomenis.",
         });
       }
     } finally {
