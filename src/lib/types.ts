@@ -4,7 +4,7 @@ export type Status = "new" | "assigned" | "in-progress" | "completed";
 export interface NewWorkerData {
   name: string;
   email: string;
-  password?: string; // Made optional for updates
+  password?: string;
   specialty: FaultType[];
   fcmToken?: string; // For push notifications
 }

@@ -65,6 +65,10 @@
           "description": "Email address of the employee.",
           "format": "email"
         },
+        "password": {
+          "type": "string",
+          "description": "Password for the employee account."
+        },
         "role": {
           "type": "string",
           "description": "Role of the employee (e.g., Administrator, Technician)."

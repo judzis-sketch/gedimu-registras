@@ -55,9 +55,13 @@ import { faultTypeTranslations } from "@/lib/utils";
 const workerFormSchema = z.object({
   name: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   email: z.string().email({ message: "Neteisingas el. pašto formatas." }),
+  password: z.string().min(6, { message: "Slaptažodis turi būti bent 6 simbolių ilgio." }).optional(),
   specialty: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "Reikia pasirinkti bent vieną specializaciją.",
   }),
+}).refine(data => !data.password || data.password.length > 0, {
+    message: "Slaptažodis yra privalomas, kai kuriate naują darbuotoją.",
+    path: ["password"],
 });
 
 
@@ -73,23 +77,28 @@ export function WorkersClient() {
     defaultValues: {
       name: "",
       email: "",
+      password: "",
       specialty: [],
     },
   });
 
   useEffect(() => {
-    if (editingWorker) {
-      form.reset({
-        name: editingWorker.name,
-        email: editingWorker.email,
-        specialty: editingWorker.specialty,
-      });
-    } else {
+    if (isDialogOpen) {
+      if (editingWorker) {
         form.reset({
-            name: "",
-            email: "",
-            specialty: [],
+          name: editingWorker.name,
+          email: editingWorker.email,
+          specialty: editingWorker.specialty,
+          password: "",
         });
+      } else {
+        form.reset({
+          name: "",
+          email: "",
+          password: "",
+          specialty: [],
+        });
+      }
     }
   }, [editingWorker, form, isDialogOpen]);
 
@@ -100,12 +109,21 @@ export function WorkersClient() {
 
     try {
       if (editingWorker) {
-        updateWorker(editingWorker.id, workerData as Partial<NewWorkerData>);
+        // Don't require password on update
+        const { password, ...updateData } = workerData;
+        const dataToSend: Partial<NewWorkerData> = updateData;
+        if(password) dataToSend.password = password; // only include password if user entered a new one
+        updateWorker(editingWorker.id, dataToSend);
         toast({
           title: "Darbuotojas atnaujintas",
           description: `${data.name} duomenys buvo sėkmingai atnaujinti.`,
         });
       } else {
+        if (!workerData.password) {
+            form.setError("password", { type: "manual", message: "Slaptažodis yra privalomas."});
+            setIsSubmitting(false);
+            return;
+        }
         await addWorker(workerData as NewWorkerData);
         toast({
           title: "Darbuotojas pridėtas",
@@ -190,6 +208,19 @@ export function WorkersClient() {
                           <FormLabel>El. paštas</FormLabel>
                           <FormControl>
                             <Input type="email" placeholder="jonas@pavyzdys.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Slaptažodis</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder={editingWorker ? "Palikite tuščią, jei nenorite keisti" : "******"} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
