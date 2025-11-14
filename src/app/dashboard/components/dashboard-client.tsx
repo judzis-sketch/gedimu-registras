@@ -86,6 +86,8 @@ export function DashboardClient({
   const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const actTemplateRef = useRef<HTMLDivElement>(null);
+
 
   const statusChangeSubMenu = (fault: Fault) => (
     <DropdownMenuSub>
@@ -178,21 +180,55 @@ export function DashboardClient({
      setIsUpdating(null);
   };
   
-  const handleSaveSignature = (faultId: string, signature: string) => {
-    setFaults(prevFaults => 
-      prevFaults.map(f => f.id === faultId ? { ...f, signature } : f)
+  const handleSaveSignature = async (faultId: string, signatureDataUrl: string) => {
+    if (!actTemplateRef.current) return;
+
+    // Temporarily append the signature image to get the full HTML
+    const signatureImg = document.createElement('img');
+    signatureImg.src = signatureDataUrl;
+    signatureImg.width = 200;
+    signatureImg.height = 100;
+    signatureImg.alt = "Kliento parašas";
+    actTemplateRef.current.querySelector('[data-signature-placeholder]')?.appendChild(signatureImg);
+
+    const actHtml = actTemplateRef.current.innerHTML;
+
+    // Clean up the appended image
+    actTemplateRef.current.querySelector('[data-signature-placeholder]')!.innerHTML = '';
+
+    setFaults(prevFaults =>
+      prevFaults.map(f =>
+        f.id === faultId
+          ? {
+              ...f,
+              status: "completed",
+              signature: actHtml,
+              updatedAt: new Date()
+            }
+          : f
+      )
     );
+
     setFaultToSign(null);
-    toast({
-      title: "Parašas išsaugotas",
-      description: "Atliktų darbų aktas sėkmingai pasirašytas.",
-    });
+
+    const fault = faults.find(f => f.id === faultId);
+    if (fault) {
+       toast({
+         title: "Parašas išsaugotas ir aktas suformuotas!",
+         description: `Būsena pakeista į "Užbaigtas".`,
+         action: createMailToAction({...fault, status: 'completed'}, statusConfig.completed.label),
+       });
+    }
   };
 
   const getWorkerName = (workerId?: string) => {
     if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
     return initialWorkers.find((w) => w.id === workerId)?.name || "Nežinomas";
   };
+  
+  const getAssignedWorker = (fault: Fault) => {
+    return initialWorkers.find((w) => w.id === fault.assignedTo);
+  }
 
   const displayedFaults = view === 'admin'
     ? faults.filter(fault => statusFilter === 'all' || fault.status === statusFilter)
@@ -291,7 +327,7 @@ export function DashboardClient({
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={fault.status !== 'completed' || !!fault.signature}
+                        disabled={(fault.status !== 'in-progress' && fault.status !== 'completed') || !!fault.signature}
                         onClick={() => setFaultToSign(fault)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
@@ -379,10 +415,11 @@ export function DashboardClient({
 
                 {selectedFault.signature && (
                   <div className="space-y-2 pt-4">
-                    <h3 className="font-semibold">Kliento parašas:</h3>
-                    <div className="rounded-md border bg-gray-100 dark:bg-gray-800 p-2 flex justify-center">
-                       <Image src={selectedFault.signature} alt="Kliento parašas" width={200} height={100} />
-                    </div>
+                    <h3 className="font-semibold">Atliktų darbų aktas ir kliento parašas:</h3>
+                    <div
+                      className="rounded-md border bg-gray-100 dark:bg-gray-800 p-4 text-sm"
+                      dangerouslySetInnerHTML={{ __html: selectedFault.signature }}
+                    />
                   </div>
                 )}
               </div>
@@ -392,17 +429,50 @@ export function DashboardClient({
       </Dialog>
 
       <Dialog open={!!faultToSign} onOpenChange={(open) => !open && setFaultToSign(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           {faultToSign && (
             <>
               <DialogHeader>
                 <DialogTitle>Atliktų darbų akto pasirašymas</DialogTitle>
                 <DialogDescription>
-                  Užsakovas: {faultToSign.reporterName}. Pasirašykite žemiau.
+                  Peržiūrėkite atliktus darbus ir pasirašykite žemiau.
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                <SignaturePad onSave={(signature) => handleSaveSignature(faultToSign.id, signature)} />
+              <div className="py-4 space-y-6 text-sm">
+                <div ref={actTemplateRef} className="space-y-4">
+                    <h3 className="text-lg font-bold text-center">ATLIKTŲ DARBŲ AKTAS Nr. {faultToSign.id}</h3>
+                    <div className="flex justify-between">
+                        <span>{faultToSign.address}</span>
+                        <span>{format(new Date(), 'yyyy-MM-dd')}</span>
+                    </div>
+                    <p>
+                        Šis aktas patvirtina, kad specialistas <span className="font-semibold">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</span> atliko šiuos darbus, susijusius su gedimo pranešimu:
+                    </p>
+                    <div className="p-2 border rounded-md bg-muted/50">
+                        <p className="font-semibold">Registruotas gedimas:</p>
+                        <p>{faultToSign.description}</p>
+                    </div>
+                    <p>
+                       Užsakovas <span className="font-semibold">{faultToSign.reporterName}</span> patvirtina, kad darbai atlikti kokybiškai, laiku ir pretenzijų dėl atliktų darbų neturi.
+                    </p>
+                    <div className="grid grid-cols-2 gap-8 pt-6">
+                        <div>
+                            <p className="font-semibold">Vykdytojas:</p>
+                            <p className="mt-8 border-b border-foreground/50"></p>
+                            <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
+                        </div>
+                        <div>
+                             <p className="font-semibold">Užsakovas:</p>
+                             <div data-signature-placeholder></div>
+                             <p className="border-b border-foreground/50"></p>
+                             <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                  <p className="text-center font-medium mb-2">Užsakovo parašas:</p>
+                  <SignaturePad onSave={(signature) => handleSaveSignature(faultToSign.id, signature)} />
+                </div>
               </div>
             </>
           )}
