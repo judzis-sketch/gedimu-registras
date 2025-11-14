@@ -133,6 +133,17 @@ const ActTemplate = ({ fault, assignedWorker, workerSignatureDataUrl, customerSi
   );
 };
 
+const SortableHeader = ({ sortKey: key, children, handleSort, currentSortKey, currentSortDirection }: { sortKey: SortKey, children: React.ReactNode, handleSort: (key: SortKey) => void, currentSortKey: SortKey, currentSortDirection: 'asc' | 'desc' }) => (
+    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
+      <div className="flex items-center gap-2">
+        {children}
+        {currentSortKey === key && (
+          currentSortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        )}
+      </div>
+    </TableHead>
+  );
+
 export function DashboardClient({
   view,
   workerId,
@@ -525,22 +536,12 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;
   
   const statusCounts = {
+    all: faults.length,
     new: faults.filter(fault => fault.status === 'new').length,
     assigned: faults.filter(fault => fault.status === 'assigned').length,
     'in-progress': faults.filter(fault => fault.status === 'in-progress').length,
     completed: faults.filter(fault => fault.status === 'completed').length
   };
-
-  const SortableHeader = ({ sortKey: key, children }: { sortKey: SortKey, children: React.ReactNode }) => (
-    <TableHead onClick={() => handleSort(key)} className="cursor-pointer">
-      <div className="flex items-center gap-2">
-        {children}
-        {sortKey === key && (
-          sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-        )}
-      </div>
-    </TableHead>
-  );
 
   const adminView = (
     <div className="space-y-4">
@@ -553,7 +554,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               key={status}
               isClickable={true}
               onClick={() => setStatusFilter(status)}
-              className={cn('ring-2 ring-transparent', statusFilter === status && config.ringClassName)}
+              className={cn('ring-2 ring-transparent transition-all', statusFilter === status && config.ringClassName)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -591,11 +592,11 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
       </Card>
       <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as Status | "all")}>
         <TabsList className="grid w-full grid-cols-5 mb-4">
-          <TabsTrigger value="all">Visi</TabsTrigger>
-          <TabsTrigger value="new">Nauji</TabsTrigger>
-          <TabsTrigger value="assigned">Priskirti</TabsTrigger>
-          <TabsTrigger value="in-progress">Vykdomi</TabsTrigger>
-          <TabsTrigger value="completed">Užbaigti</TabsTrigger>
+          <TabsTrigger value="all">Visi ({statusCounts.all})</TabsTrigger>
+          <TabsTrigger value="new">Nauji ({statusCounts.new})</TabsTrigger>
+          <TabsTrigger value="assigned">Priskirti ({statusCounts.assigned})</TabsTrigger>
+          <TabsTrigger value="in-progress">Vykdomi ({statusCounts['in-progress']})</TabsTrigger>
+          <TabsTrigger value="completed">Užbaigti ({statusCounts.completed})</TabsTrigger>
         </TabsList>
         <Card>
             <CardHeader>
@@ -629,22 +630,10 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
               <TableHead>Tipas</TableHead>
               <TableHead>Adresas</TableHead>
               {view === 'worker' && <TableHead>Pranešėjas</TableHead>}
-              {view === 'admin' ? (
-                <SortableHeader sortKey="status">Būsena</SortableHeader>
-              ) : (
-                <TableHead>Būsena</TableHead>
-              )}
-               {view === 'admin' ? (
-                <SortableHeader sortKey="assignedTo">Priskirta</SortableHeader>
-              ) : (
-                <TableHead>Priskirta</TableHead>
-              )}
+              <SortableHeader sortKey="status" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Būsena</SortableHeader>
+              <SortableHeader sortKey="assignedTo" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Priskirta</SortableHeader>
               {view === 'worker' && <TableHead>Keisti būseną</TableHead>}
-              {view === 'admin' ? (
-                <SortableHeader sortKey="updatedAt">Atnaujinta</SortableHeader>
-              ) : (
-                <TableHead>Atnaujinta</TableHead>
-              )}
+              <SortableHeader sortKey="updatedAt" handleSort={handleSort} currentSortKey={sortKey} currentSortDirection={sortDirection}>Atnaujinta</SortableHeader>
               <TableHead className="text-right">Veiksmai</TableHead>
             </TableRow>
           </TableHeader>
