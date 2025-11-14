@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
-import { Fault, NewFaultData, Worker } from '@/lib/types';
+import { Fault, NewFaultData, Worker, Status } from '@/lib/types';
 import { useWorkers } from './workers-context';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, serverTimestamp, addDoc, query, where } from 'firebase/firestore';
@@ -81,17 +81,15 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     };
 
     addDoc(faultsCollection, newFaultDocument).catch(error => {
-      errorEmitter.emit(
-        'permission-error',
-        new FirestorePermissionError({
+      const permissionError = new FirestorePermissionError({
           path: faultsCollection.path,
           operation: 'create',
           requestResourceData: newFaultDocument,
-        })
-      );
-      console.error("Error adding fault to Firestore:", error);
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      console.error("Error adding fault to Firestore:", permissionError);
     });
-  }, [firestore, faults, workers]);
+  }, [firestore, workers, faults]);
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
     if (!firestore) return;
