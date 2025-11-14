@@ -55,7 +55,6 @@ import { faultTypeTranslations } from "@/lib/utils";
 const workerFormSchema = z.object({
   name: z.string().min(2, { message: "Vardas turi būti bent 2 simbolių ilgio." }),
   email: z.string().email({ message: "Neteisingas el. pašto formatas." }),
-  password: z.string().min(8, "Slaptažodis turi būti bent 8 simbolių ilgio.").optional().or(z.literal("")),
   specialty: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "Reikia pasirinkti bent vieną specializaciją.",
   }),
@@ -74,7 +73,6 @@ export function WorkersClient() {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       specialty: [],
     },
   });
@@ -84,14 +82,12 @@ export function WorkersClient() {
       form.reset({
         name: editingWorker.name,
         email: editingWorker.email,
-        password: "", // Password is not shown for editing
         specialty: editingWorker.specialty,
       });
     } else {
         form.reset({
             name: "",
             email: "",
-            password: "",
             specialty: [],
         });
     }
@@ -101,15 +97,6 @@ export function WorkersClient() {
   async function onSubmit(data: z.infer<typeof workerFormSchema>) {
      setIsSubmitting(true);
      const workerData = { ...data };
-     
-     // Ensure password is not sent on update if empty
-     if (editingWorker && !workerData.password) {
-        delete workerData.password;
-     } else if (!editingWorker && !workerData.password) {
-        form.setError("password", { message: "Slaptažodis yra privalomas naujam darbuotojui."});
-        setIsSubmitting(false);
-        return;
-     }
 
     try {
       if (editingWorker) {
@@ -202,20 +189,7 @@ export function WorkersClient() {
                         <FormItem>
                           <FormLabel>El. paštas</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="jonas@pavyzdys.com" {...field} disabled={!!editingWorker} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Slaptažodis</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder={editingWorker ? 'Palikite tuščią, jei nekeičiate' : ''} {...field} />
+                            <Input type="email" placeholder="jonas@pavyzdys.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
