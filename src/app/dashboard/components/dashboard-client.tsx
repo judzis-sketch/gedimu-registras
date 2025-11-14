@@ -60,7 +60,7 @@ interface DashboardClientProps {
   workerId?: string;
 }
 
-type SortKey = 'id' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt';
+type SortKey = 'id' | 'description' | 'type' | 'address' | 'status' | 'assignedTo' | 'updatedAt' | 'createdAt';
 
 interface NotificationContent {
     fault: Fault;
@@ -325,7 +325,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
                 title: "Aktas sėkmingai pasirašytas ir suformuotas!",
                 description: `Būsena pakeista į "Užbaigtas".`,
             });
-            openNotificationEditor(updatedFault, statusConfig.completed.label);
+             if (view === 'admin') {
+                openNotificationEditor(updatedFault, statusConfig.completed.label);
+            }
         }
     } catch (error) {
         console.error("Error capturing act:", error);
