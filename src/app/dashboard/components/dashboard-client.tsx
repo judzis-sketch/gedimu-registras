@@ -471,7 +471,9 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
   const displayedAndSortedFaults = useMemo(() => {
     if (!faults) return [];
-  
+    
+    // The `faults` data is already pre-filtered by the useFaults hook based on the user role.
+    // Here we only apply the UI filters for the admin view.
     let filteredFaults = faults;
     if (view === 'admin') {
       filteredFaults = faults.filter(fault => {
@@ -485,8 +487,6 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
 
             return statusMatch && dateMatch;
         });
-    } else if (view === 'worker') {
-      filteredFaults = faults.filter(fault => fault.assignedTo === user?.uid && fault.status !== 'completed');
     }
 
     return [...filteredFaults].sort((a, b) => {
@@ -525,7 +525,7 @@ const handleSaveCustomerSignature = async (faultId: string, signatureDataUrl: st
         
         return 0;
     });
-}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers, user]);
+}, [faults, view, statusFilter, dateRange, sortKey, sortDirection, workers]);
 
 
   const downloadableActsCount = displayedAndSortedFaults.filter(f => f.status === 'completed' && f.actImageUrl).length;

@@ -24,14 +24,15 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
   const { workers } = useWorkers();
 
   const faultsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-
+    if (!firestore) return null;
     const faultsCollection = collection(firestore, 'issues');
     
-    if (user.email !== 'admin@zarasubustas.lt') {
+    // If not an admin, create a query to only get faults assigned to the current user
+    if (user && user.email !== 'admin@zarasubustas.lt') {
       return query(faultsCollection, where('assignedTo', '==', user.uid));
     }
     
+    // For admin, return the whole collection
     return faultsCollection;
   }, [firestore, user]);
 
@@ -71,10 +72,18 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const newFaultDocument = {
-      ...faultData,
+      // Explicitly define all fields from NewFaultData
+      reporterName: faultData.reporterName,
+      reporterEmail: faultData.reporterEmail,
+      reporterPhone: faultData.reporterPhone,
+      address: faultData.address,
+      type: faultData.type,
+      description: faultData.description,
+      
+      // Add system-generated fields
       customId: newCustomId,
       status: assignedWorker ? 'assigned' as const : 'new' as const,
-      assignedTo: assignedWorker ? assignedWorker.id : '',
+      assignedTo: assignedWorker ? assignedWorker.id : '', // Ensure this is always a string
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
