@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFaults } from "@/context/faults-context";
-import { FaultType } from "@/lib/types";
+import { FaultType, NewFaultData } from "@/lib/types";
 
 const formSchema = z.object({
   reporterName: z.string().min(2, "Vardas turi būti bent 2 simbolių ilgio."),
@@ -66,7 +66,7 @@ export function ReportFaultForm() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    addFault(values);
+    addFault(values as NewFaultData);
     
     setIsSubmitting(false);
     setIsSuccess(true);

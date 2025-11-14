@@ -7,13 +7,16 @@ export interface Worker {
   specialty: FaultType[];
 }
 
-export interface Fault {
+export interface NewFaultData {
+    reporterName: string;
+    reporterEmail: string;
+    address: string;
+    type: FaultType;
+    description: string;
+}
+
+export interface Fault extends NewFaultData {
   id: string;
-  reporterName: string;
-  reporterEmail: string;
-  address: string;
-  type: FaultType;
-  description: string;
   status: Status;
   createdAt: Date;
   assignedTo?: string; // Worker ID

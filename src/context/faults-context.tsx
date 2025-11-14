@@ -2,15 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { faults as initialFaultsData } from '@/lib/data';
-import type { Fault, FaultType } from '@/lib/types';
-
-interface NewFaultData {
-    reporterName: string;
-    reporterEmail: string;
-    address: string;
-    type: FaultType;
-    description: string;
-}
+import type { Fault, NewFaultData } from '@/lib/types';
 
 interface FaultsContextType {
   faults: Fault[];
