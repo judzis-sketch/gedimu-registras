@@ -30,7 +30,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download } from "lucide-react";
+import { MoreHorizontal, User, Clock, Info, Mail, MapPin, Loader2, Send, Phone, Edit, Download, Archive } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Fault, Worker, Status } from "@/lib/types";
 import { FaultTypeIcon } from "@/components/icons";
@@ -45,6 +45,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { SignaturePad } from "@/components/signature-pad";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import JSZip from "jszip";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
@@ -92,6 +93,7 @@ export function DashboardClient({
   const [faultToSign, setFaultToSign] = useState<Fault | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const actTemplateRef = useRef<HTMLDivElement>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: addDays(new Date(), -30),
@@ -239,8 +241,8 @@ export function DashboardClient({
     }
   };
 
-  const handleDownloadAct = async (fault: Fault) => {
-    if (!fault.signature) return;
+  const generatePdfBlob = async (fault: Fault): Promise<Blob | null> => {
+    if (!fault.signature) return null;
 
     const container = document.createElement('div');
     container.style.position = 'fixed';
@@ -281,9 +283,8 @@ export function DashboardClient({
         const x = (pdfWidth - finalWidth) / 2;
         const y = 10;
 
-
         pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
-        pdf.save(`atliktu-darbu-aktas-${fault.id}.pdf`);
+        return pdf.blob();
 
     } catch (error) {
         console.error("Klaida generuojant PDF:", error);
@@ -292,10 +293,69 @@ export function DashboardClient({
             title: "Klaida",
             description: "Nepavyko sugeneruoti PDF failo."
         });
+        return null;
     } finally {
         document.body.removeChild(container);
     }
-};
+  }
+
+  const handleDownloadAct = async (fault: Fault) => {
+    const blob = await generatePdfBlob(fault);
+    if(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `atliktu-darbu-aktas-${fault.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleDownloadAllActs = async () => {
+    setIsDownloadingAll(true);
+    toast({
+        title: "Pradedamas aktų archyvavimas...",
+        description: "Tai gali užtrukti kelias akimirkas. Prašome palaukti."
+    });
+
+    const zip = new JSZip();
+    const signedFaultsToDownload = displayedFaults.filter(f => f.signature);
+
+    for (const fault of signedFaultsToDownload) {
+        const blob = await generatePdfBlob(fault);
+        if (blob) {
+            zip.file(`atliktu-darbu-aktas-${fault.id}.pdf`, blob);
+        }
+    }
+
+    try {
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `aktai-${format(new Date(), 'yyyy-MM-dd')}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({
+            title: "Archyvas sėkmingai sukurtas!",
+            description: "Pradedamas ZIP failo atsisiuntimas."
+        });
+    } catch (error) {
+        console.error("Klaida kuriant ZIP archyvą:", error);
+        toast({
+            variant: "destructive",
+            title: "Klaida",
+            description: "Nepavyko sukurti ZIP failo."
+        });
+    } finally {
+        setIsDownloadingAll(false);
+    }
+  }
+
 
   const getWorkerName = (workerId?: string) => {
     if (!workerId) return <span className="text-muted-foreground">Nepriskirta</span>;
@@ -323,15 +383,28 @@ export function DashboardClient({
     return false;
   });
 
+  const signedFaultsCount = displayedFaults.filter(f => f.signature).length;
+
   const adminView = (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Ataskaitos pagal datą</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center gap-4">
+        <CardContent className="flex flex-wrap items-center gap-4">
           <DateRangePicker date={dateRange} onDateChange={setDateRange} />
           {dateRange && <Button variant="outline" onClick={() => setDateRange(undefined)}>Išvalyti</Button>}
+           <Button
+                onClick={handleDownloadAllActs}
+                disabled={isDownloadingAll || signedFaultsCount === 0}
+            >
+                {isDownloadingAll ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Archive className="mr-2 h-4 w-4" />
+                )}
+                Atsisiųsti visus aktus ({signedFaultsCount})
+            </Button>
         </CardContent>
       </Card>
       <Tabs defaultValue="all" onValueChange={(value) => setStatusFilter(value as Status | "all")}>
