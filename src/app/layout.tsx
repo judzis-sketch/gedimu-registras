@@ -3,6 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { ForbiddenWordsProvider } from "@/context/forbidden-words-context";
 import "./globals.css";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
+import { WorkersProvider } from "@/context/workers-context";
+import { FaultsProvider } from "@/context/faults-context";
 
 export const metadata: Metadata = {
   title: "Gedimų Registras",
@@ -31,7 +33,7 @@ export default function RootLayout({
       <body className="font-body antialiased min-h-screen flex flex-col">
         <FirebaseClientProvider>
           <ForbiddenWordsProvider>
-            {children}
+              {children}
             <Toaster />
           </ForbiddenWordsProvider>
         </FirebaseClientProvider>

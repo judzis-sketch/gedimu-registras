@@ -50,7 +50,9 @@ function DashboardLayoutContent({
   const messaging = useMessaging();
 
   const requestNotificationPermission = useCallback(async () => {
-    if (!messaging) return;
+    if (typeof window === 'undefined' || !messaging) return;
+    
+    // The 'messaging' is a Promise, so we need to await it.
     const messagingInstance = await messaging;
     if (!messagingInstance || !user) return;
     

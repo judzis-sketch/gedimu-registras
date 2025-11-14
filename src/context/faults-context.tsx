@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useMemo, useCallback } fro
 import { Fault, NewFaultData, Worker, Status } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, serverTimestamp, addDoc, query, where, Query } from 'firebase/firestore';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useSearchParams } from 'next/navigation';
@@ -81,15 +81,7 @@ export const FaultsProvider = ({ children }: { children: ReactNode }) => {
       updatedAt: serverTimestamp(),
     };
 
-    addDoc(faultsCollection, newFaultDocument).catch(error => {
-      const permissionError = new FirestorePermissionError({
-          path: faultsCollection.path,
-          operation: 'create',
-          requestResourceData: newFaultDocument,
-      });
-      console.error("Error adding fault to Firestore:", permissionError);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    addDocumentNonBlocking(faultsCollection, newFaultDocument);
   }, [firestore, faultsFromHook]); 
 
   const updateFault = (faultId: string, faultData: Partial<Fault>) => {
