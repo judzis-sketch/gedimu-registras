@@ -260,23 +260,20 @@ export function DashboardClient({
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const canvasAspectRatio = canvasWidth / canvasHeight;
-        const pdfAspectRatio = pdfWidth / pdfHeight;
-
-        let finalWidth, finalHeight;
-
-        if (canvasAspectRatio > pdfAspectRatio) {
-            finalWidth = pdfWidth;
-            finalHeight = pdfWidth / canvasAspectRatio;
-        } else {
-            finalHeight = pdfHeight;
-            finalWidth = pdfHeight * canvasAspectRatio;
+        const imgWidth = pdfWidth - 20; // with some margin
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        let finalHeight = imgHeight;
+        let finalWidth = imgWidth;
+        
+        if (imgHeight > pdfHeight - 20) {
+            finalHeight = pdfHeight - 20;
+            finalWidth = (canvas.width * finalHeight) / canvas.height;
         }
         
         const x = (pdfWidth - finalWidth) / 2;
-        const y = (pdfHeight - finalHeight) / 2;
+        const y = 10;
+
 
         pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
         pdf.save(`atliktu-darbu-aktas-${fault.id}.pdf`);
@@ -399,7 +396,7 @@ export function DashboardClient({
                           Peržiūrėti informaciją
                       </DropdownMenuItem>
                        <DropdownMenuItem
-                        disabled={fault.status !== 'in-progress' || !!fault.signature}
+                        disabled={fault.status === 'new' || fault.status === 'assigned' || !!fault.signature}
                         onClick={() => setFaultToSign(fault)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
@@ -536,6 +533,7 @@ export function DashboardClient({
                     <div className="grid grid-cols-2 gap-8 pt-6">
                         <div>
                             <p className="font-semibold">Vykdytojas:</p>
+                            <p className="font-bold">Uždaroji akcinė bendrovė "Zarasų būstas"</p>
                             <p className="mt-2 font-medium">{getAssignedWorker(faultToSign)?.name || 'Nenurodytas'}</p>
                             <p className="mt-8 border-b border-foreground/50"></p>
                             <p className="text-xs text-center">(parašas, vardas, pavardė)</p>
