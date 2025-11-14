@@ -16,12 +16,10 @@ import { Header } from "@/components/header";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("admin");
 
   const handleLogin = () => {
-    if (role === "user") {
-      router.push("/");
-    } else if (role === 'worker') {
+    if (role === 'worker') {
       router.push(`/dashboard/my-tasks?role=${role}`);
     } else {
       router.push(`/dashboard?role=${role}`);
@@ -41,11 +39,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <RadioGroup defaultValue="user" onValueChange={setRole}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="user" id="user" />
-                  <Label htmlFor="user">Vartotojas (pranešti apie gedimą)</Label>
-                </div>
+              <RadioGroup defaultValue="admin" onValueChange={setRole}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="admin" id="admin" />
                   <Label htmlFor="admin">Administratorius</Label>
